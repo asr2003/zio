@@ -163,33 +163,35 @@ object FiberSpec extends ZIOBaseSpec {
           } yield assertTrue(currentFiber.isDefined)
         }
       } @@ TestAspect.fromLayer(Runtime.enableCurrentFiber),
-      suite("FiberSpec")(
-        suite("FiberFailure stack trace handling")(
-          test("FiberFailure captures the full stack trace including user code") {
-            def subcall(): Unit =
-              Unsafe.unsafe { implicit unsafe =>
-                Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
-              }
-            def call(): Unit = subcall()
+      suite("FiberFailure stack trace handling")(
+        test("FiberFailure captures the full stack trace including user code") {
+          def subcall(): Unit =
+            Unsafe.unsafe { implicit unsafe =>
+              Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
+            }
+          def call(): Unit = subcall()
 
-            val fiberFailureTest = ZIO.attempt(call()).catchAll {
+          val fiberFailureTest = ZIO
+            .attempt(call())
+            .catchAll {
               case fiberFailure: FiberFailure =>
                 ZIO.succeed(fiberFailure.getStackTrace.mkString("\n"))
               case other =>
                 ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
-            }.asInstanceOf[ZIO[Any, Nothing, String]]
+            }
+            .asInstanceOf[ZIO[Any, Nothing, String]]
 
-            fiberFailureTest.flatMap { stackTrace =>
-              ZIO.succeed {
-                assertTrue(
-                  stackTrace.contains("call") &&
-                    stackTrace.contains("subcall") &&
-                    stackTrace.contains("FiberSpec")
-                )
-              }
+          fiberFailureTest.flatMap { stackTrace =>
+            ZIO.succeed {
+              assertTrue(
+                stackTrace.contains("call") &&
+                  stackTrace.contains("subcall") &&
+                  stackTrace.contains("FiberSpec") &&
+                  stackTrace.contains("Test.main")
+              )
             }
           }
-        )
+        }
       )
     )
 
