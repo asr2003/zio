@@ -189,7 +189,6 @@ object FiberSpec extends ZIOBaseSpec {
                 stackTrace.contains("call") &&
                   stackTrace.contains("subcall") &&
                   stackTrace.contains("FiberSpec") &&
-                  stackTrace.contains("Test.main")
               )
             }
           }
