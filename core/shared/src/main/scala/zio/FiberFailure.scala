@@ -27,20 +27,10 @@ import zio.stacktracer.TracingImplicits.disableAutoTrace
  * better integrate with Scala exception handling.
  */
 final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, false) {
-
-  private var javaStackTrace: Array[StackTraceElement] = Thread.currentThread().getStackTrace
-
-  def this(cause: Cause[Any], javaStackTrace: Array[StackTraceElement]) = {
-    this(cause)
-    this.javaStackTrace = javaStackTrace
-  }
-
   override def getMessage: String = cause.unified.headOption.fold("<unknown>")(_.message)
 
-  override def getStackTrace(): Array[StackTraceElement] = {
-    val zioStackTrace = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
-    zioStackTrace ++ javaStackTrace
-  }
+  override def getStackTrace(): Array[StackTraceElement] =
+    cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
 
   override def getCause(): Throwable =
     cause.find { case Cause.Die(throwable, _) => throwable }
@@ -54,12 +44,4 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
 
   override def toString =
     cause.prettyPrint
-
-}
-
-object FiberFailure {
-  def apply(cause: Cause[Any]): FiberFailure = new FiberFailure(cause)
-
-  def apply(cause: Cause[Any], javaStackTrace: Array[StackTraceElement]): FiberFailure =
-    new FiberFailure(cause, javaStackTrace)
 }
