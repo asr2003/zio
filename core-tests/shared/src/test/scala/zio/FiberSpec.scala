@@ -174,9 +174,10 @@ object FiberSpec extends ZIOBaseSpec {
           val fiberFailureTest = ZIO
             .attempt(call())
             .catchAll {
-              val stackTrace = fiberFailure.getStackTrace.mkString("\n")
-              ZIO.log(s"Captured Stack Trace:\n$stackTrace") *>
-                ZIO.succeed(stackTrace)
+              case fiberFailure: FiberFailure =>
+                val stackTrace = fiberFailure.getStackTrace.mkString("\n")
+                ZIO.log(s"Captured Stack Trace:\n$stackTrace") *>
+                  ZIO.succeed(stackTrace)
               case other =>
                 ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
             }
@@ -187,7 +188,8 @@ object FiberSpec extends ZIOBaseSpec {
               assertTrue(
                 stackTrace.contains("call") &&
                   stackTrace.contains("subcall") &&
-                  stackTrace.contains("FiberSpec")
+                  stackTrace.contains("FiberSpec") &&
+                  stackTrace.contains("Test.main")
               )
             }
           }
