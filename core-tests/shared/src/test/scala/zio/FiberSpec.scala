@@ -165,26 +165,28 @@ object FiberSpec extends ZIOBaseSpec {
       } @@ TestAspect.fromLayer(Runtime.enableCurrentFiber),
       suite("FiberFailure stack trace handling")(
         test("FiberFailure captures the full stack trace including user code") {
-          def subcall(): Unit =
+          def subcall(): Unit = {
             Unsafe.unsafe { implicit unsafe =>
               Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
             }
+          }
           def call(): Unit = subcall()
 
           val fiberFailureTest = ZIO.attempt(call()).catchAll { case fiberFailure: FiberFailure =>
             ZIO.succeed(fiberFailure.getStackTrace.mkString("\n"))
           }
 
-          for {
-            stackTrace <- fiberFailureTest
-          } yield assertTrue(
-            stackTrace.contains("call") &&
-              stackTrace.contains("subcall") &&
-              stackTrace.contains("FiberSpec")
-          )
+          fiberFailureTest.flatMap { stackTrace =>
+            ZIO.succeed {
+              assertTrue(
+                stackTrace.contains("call") &&
+                stackTrace.contains("subcall") &&
+                stackTrace.contains("FiberSpec")
+              )
+            }
+          }
         }
       )
-    )
 
   val (initial, update)                            = ("initial", "update")
   val fibers: List[Fiber.Synthetic[Nothing, Unit]] = List.fill(100000)(Fiber.unit)
