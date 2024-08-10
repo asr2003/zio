@@ -178,9 +178,9 @@ object FiberSpec extends ZIOBaseSpec {
           for {
             stackTrace <- fiberFailureTest
           } yield assertTrue(
-            stackTrace.contains("call"),
-            stackTrace.contains("subcall"),
-            stackTrace.contains("FiberSpec")
+            stackTrace.contains("call") &&
+              stackTrace.contains("subcall") &&
+              stackTrace.contains("FiberSpec")
           )
         }
       )
