@@ -171,10 +171,12 @@ object FiberSpec extends ZIOBaseSpec {
             }
           def call(): Unit = subcall()
 
-          val fiberFailureTest: ZIO[Any, Nothing, String] =
-            ZIO.attempt(call()).catchAll { case fiberFailure: FiberFailure =>
+          val fiberFailureTest = ZIO
+            .attempt(call())
+            .catchAll { case fiberFailure: FiberFailure =>
               ZIO.succeed(fiberFailure.getStackTrace.mkString("\n"))
             }
+            .asInstanceOf[ZIO[Any, Nothing, String]]
 
           fiberFailureTest.flatMap { stackTrace =>
             ZIO.succeed {
