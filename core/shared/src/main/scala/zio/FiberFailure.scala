@@ -66,5 +66,5 @@ object FiberFailure {
   def apply(cause: Cause[Any]): FiberFailure = new FiberFailure(cause)
 
   def apply(cause: Cause[Any], javaStackTrace: Array[StackTraceElement]): FiberFailure =
-    new FiberFailure(cause, javaStackTrace)
+    new FiberFailure(cause).withStackTrace(javaStackTrace)
 }
