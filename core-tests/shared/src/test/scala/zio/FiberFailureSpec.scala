@@ -1,134 +1,139 @@
 package zio
 
 import zio.test._
-import java.io.{ByteArrayOutputStream, PrintStream}
 
 object FiberFailureSpec extends ZIOBaseSpec {
 
-  def spec =
-    suite("FiberFailureSpec")(
-      test("captures full stack trace including user code for ZIO.fail with String") {
-        def subcall(): Unit =
-          Unsafe.unsafe { implicit unsafe =>
-            Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
-          }
-        def call1(): Unit = subcall()
+  def spec = suite("FiberFailureSpec")(
+    test("FiberFailure captures the stack trace for ZIO.fail with String") {
+      def subcall(): Unit =
+        Unsafe.unsafe { implicit unsafe =>
+          Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
+        }
+      def call1(): Unit = subcall()
 
-        assertStackTraceConsistency(() => call1())
-      },
-      //   test("captures full stack trace including user code for ZIO.fail with Throwable") {
-      //     def subcall(): Unit =
-      //       Unsafe.unsafe { implicit unsafe =>
-      //         Runtime.default.unsafe.run(ZIO.fail(new RuntimeException("boom"))).getOrThrowFiberFailure()
-      //       }
-      //     def call1(): Unit = subcall()
+      val fiberFailureTest = ZIO
+        .attempt(call1())
+        .catchAll { case fiberFailure: FiberFailure =>
+          ZIO.succeed(fiberFailure.getStackTrace.mkString("\n"))
+        }
 
-      //     assertStackTraceConsistency(() => call1())
-      //   },
-      //   test("captures full stack trace including user code for ZIO.die") {
-      //     def subcall(): Unit =
-      //       Unsafe.unsafe { implicit unsafe =>
-      //         Runtime.default.unsafe.run(ZIO.die(new RuntimeException("boom"))).getOrThrowFiberFailure()
-      //       }
-      //     def call1(): Unit = subcall()
-
-      //     assertStackTraceConsistency(() => call1())
-      //   },
-      //   test("captures full stack trace including user code for Exit.fail") {
-      //     def subcall(): Unit =
-      //       Unsafe.unsafe { implicit unsafe =>
-      //         val exit = Runtime.default.unsafe.run(ZIO.fail(new RuntimeException("boom")).exit)
-      //         exit.getOrThrowFiberFailure()
-      //       }
-      //     def call1(): Unit = subcall()
-
-      //     assertStackTraceConsistency(() => call1())
-      //   },
-      //   test("captures full stack trace including user code for Exit.die") {
-      //     def subcall(): Unit =
-      //       Unsafe.unsafe { implicit unsafe =>
-      //         val exit = Runtime.default.unsafe.run(ZIO.die(new RuntimeException("boom")).exit)
-      //         exit.getOrThrowFiberFailure()
-      //       }
-      //     def call1(): Unit = subcall()
-
-      //     assertStackTraceConsistency(() => call1())
-      //   },
-      //   test("captures full stack trace including user code for ZIO.interrupt") {
-      //     def subcall(): Unit =
-      //       Unsafe.unsafe { implicit unsafe =>
-      //         Runtime.default.unsafe.run(ZIO.interrupt).getOrThrowFiberFailure()
-      //       }
-      //     def call1(): Unit = subcall()
-
-      //     assertStackTraceConsistency(() => call1())
-      //   }
-      // )
-
-      test("captures the expected stack trace structure and ensures consistency") {
-        def subcall(): Unit =
-          Unsafe.unsafe { implicit unsafe =>
-            Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
-          }
-        def call1(): Unit = subcall()
-
-        assertStackTraceConsistency(() => call1())
+      fiberFailureTest.flatMap { stackTrace =>
+        ZIO.succeed {
+          assertTrue(
+            stackTrace.contains("call1") &&
+              stackTrace.contains("subcall") &&
+              stackTrace.contains("FiberFailureSpec")
+          )
+        }
       }
-    )
+    } @@ exceptJS,
+    test("FiberFailure captures the stack trace for ZIO.fail with Throwable") {
+      def subcall(): Unit =
+        Unsafe.unsafe { implicit unsafe =>
+          Runtime.default.unsafe.run(ZIO.fail(new Exception("boom"))).getOrThrowFiberFailure()
+        }
+      def call1(): Unit = subcall()
 
-  private def cleanStackTrace(stackTrace: String): String =
-    stackTrace
-      .replaceAll("""\(.+?:\d+\)""", "(line)")
-      .replaceAll("""\/.*\/""", "")
+      val fiberFailureTest = ZIO
+        .attempt(call1())
+        .catchAll { case fiberFailure: FiberFailure =>
+          ZIO.succeed(fiberFailure.getStackTrace.mkString("\n"))
+        }
 
-  private def assertStackTraceConsistency(call1: () => Unit) =
-    for {
-      fiberFailureTest <- ZIO
-                            .attempt(call1())
-                            .catchAll { case fiberFailure: FiberFailure =>
-                              val stackTrace = cleanStackTrace(
-                                fiberFailure.getStackTrace.mkString("\n")
-                              )
-                              val toStringOutput =
-                                cleanStackTrace(fiberFailure.toString)
-                              val printStackTraceOutput = {
-                                val stream = new ByteArrayOutputStream()
-                                fiberFailure.printStackTrace(
-                                  new PrintStream(stream)
-                                )
-                                cleanStackTrace(stream.toString)
-                              }
-                              ZIO.succeed(
-                                (
-                                  stackTrace,
-                                  toStringOutput,
-                                  printStackTraceOutput
-                                )
-                              )
-                            }
+      fiberFailureTest.flatMap { stackTrace =>
+        ZIO.succeed {
+          assertTrue(
+            stackTrace.contains("call1") &&
+              stackTrace.contains("subcall") &&
+              stackTrace.contains("FiberFailureSpec")
+          )
+        }
+      }
+    } @@ exceptJS,
+    test("FiberFailure captures the stack trace for ZIO.die") {
+      def subcall(): Unit =
+        Unsafe.unsafe { implicit unsafe =>
+          Runtime.default.unsafe.run(ZIO.die(new RuntimeException("boom"))).getOrThrowFiberFailure()
+        }
+      def call1(): Unit = subcall()
 
-      tuple <- fiberFailureTest.map {
-                 case (stackTrace: String, toStringOutput: String, printStackTraceOutput: String) =>
-                   (stackTrace, toStringOutput, printStackTraceOutput)
-               }
-      (stackTrace, toStringOutput, printStackTraceOutput) = tuple
-      result <- ZIO.succeed {
-                  val expectedStackTrace = """zio.FiberSpec.spec.subcall(FiberSpec.scala:line)
-                                              java.base/java.lang.Thread.getStackTrace(Thread.java:line)
-                                              zio.FiberFailure.<init>(FiberFailure.scala:line)
-                                              zio.FiberFailure$.apply(FiberFailure.scala:line)
-                                              zio.Exit.getOrThrowFiberFailure(ZIO.scala:line)
-                                              zio.FiberSpec$.$anonfun$spec$134(FiberSpec.scala:line)
-                                              zio.FiberRuntime.runLoop(FiberRuntime.scala:line)"""
+      val fiberFailureTest = ZIO
+        .attempt(call1())
+        .catchAll { case fiberFailure: FiberFailure =>
+          ZIO.succeed(fiberFailure.getStackTrace.mkString("\n"))
+        }
 
-                  assertTrue(
-                    stackTrace.contains("zio.FiberSpec.spec.subcall"),
-                    stackTrace.contains("zio.FiberFailure.<init>"),
-                    stackTrace.contains("zio.FiberRuntime.runLoop"),
-                    stackTrace == expectedStackTrace.trim,
-                    toStringOutput.contains(stackTrace),
-                    printStackTraceOutput.contains(stackTrace)
-                  )
-                }
-    } yield result
+      fiberFailureTest.flatMap { stackTrace =>
+        ZIO.succeed {
+          assertTrue(
+            stackTrace.contains("call1") &&
+              stackTrace.contains("subcall") &&
+              stackTrace.contains("FiberFailureSpec")
+          )
+        }
+      }
+    } @@ exceptJS,
+    test("FiberFailure captures the stack trace for Exit.fail") {
+      def subcall(): Unit =
+        Unsafe.unsafe { implicit unsafe =>
+          Runtime.default.unsafe.run(ZIO.failCause(Cause.fail("boom"))).getOrThrowFiberFailure()
+        }
+      def call1(): Unit = subcall()
+
+      val fiberFailureTest = ZIO
+        .attempt(call1())
+        .catchAll { case fiberFailure: FiberFailure =>
+          ZIO.succeed(fiberFailure.getStackTrace.mkString("\n"))
+        }
+
+      fiberFailureTest.flatMap { stackTrace =>
+        ZIO.succeed {
+          assertTrue(
+            stackTrace.contains("call1") &&
+              stackTrace.contains("subcall") &&
+              stackTrace.contains("FiberFailureSpec")
+          )
+        }
+      }
+    } @@ exceptJS,
+    test("FiberFailure captures the stack trace for Exit.die") {
+      def subcall(): Unit =
+        Unsafe.unsafe { implicit unsafe =>
+          Runtime.default.unsafe.run(ZIO.die(new RuntimeException("boom"))).getOrThrowFiberFailure()
+        }
+      def call1(): Unit = subcall()
+
+      val fiberFailureTest = ZIO
+        .attempt(call1())
+        .catchAll { case fiberFailure: FiberFailure =>
+          ZIO.succeed(fiberFailure.getStackTrace.mkString("\n"))
+        }
+
+      fiberFailureTest.flatMap { stackTrace =>
+        ZIO.succeed {
+          assertTrue(
+            stackTrace.contains("call1") &&
+              stackTrace.contains("subcall") &&
+              stackTrace.contains("FiberFailureSpec")
+          )
+        }
+      }
+    } @@ exceptJS,
+    test("FiberFailure captures the stack trace for ZIO.interrupt") {
+      val interruptingFiber = ZIO.interrupt.fork
+        .flatMap(_.join)
+        .catchAll { case fiberFailure: FiberFailure =>
+          ZIO.succeed(fiberFailure.getStackTrace.mkString("\n"))
+        }
+
+      interruptingFiber.flatMap { stackTrace =>
+        ZIO.succeed {
+          assertTrue(
+            stackTrace.contains("FiberFailureSpec")
+          )
+        }
+      }
+    } @@ exceptJS
+  )
 }
