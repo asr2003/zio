@@ -2,6 +2,7 @@ package zio
 
 import zio.test._
 import zio.test.TestAspect._
+import java.lang._
 
 object FiberFailureSpec extends ZIOBaseSpec {
 
@@ -23,7 +24,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
           case other =>
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
-        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
@@ -52,7 +52,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
           case other =>
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
-        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
@@ -81,7 +80,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
           case other =>
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
-        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
@@ -110,7 +108,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
           case other =>
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
-        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
@@ -139,7 +136,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
           case other =>
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
-        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
@@ -159,10 +155,9 @@ object FiberFailureSpec extends ZIOBaseSpec {
             val stackTrace = fiberFailure.getStackTrace.mkString("\n")
             ZIO.log(s"Captured Stack Trace:\n$stackTrace") *>
               ZIO.succeed(stackTrace)
-          case other =>
+          case other: Throwable =>
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
-        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       interruptingFiber.flatMap { stackTrace =>
         ZIO.succeed {
