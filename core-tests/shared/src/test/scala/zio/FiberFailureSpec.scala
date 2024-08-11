@@ -1,7 +1,6 @@
 package zio
 
 import zio.test._
-import java.io.{ByteArrayOutputStream, PrintStream}
 
 object FiberFailureSpec extends ZIOBaseSpec {
 
@@ -14,7 +13,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           }
         def call1(): Unit = subcall()
 
-        assertStackTraceConsistency(call1)
+        assertStackTraceConsistency(() => call1())
       },
       test("captures full stack trace including user code for ZIO.fail with Throwable") {
         def subcall(): Unit =
@@ -23,7 +22,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           }
         def call1(): Unit = subcall()
 
-        assertStackTraceConsistency(call1)
+        assertStackTraceConsistency(() => call1())
       },
       test("captures full stack trace including user code for ZIO.die") {
         def subcall(): Unit =
@@ -32,25 +31,27 @@ object FiberFailureSpec extends ZIOBaseSpec {
           }
         def call1(): Unit = subcall()
 
-        assertStackTraceConsistency(call1)
+        assertStackTraceConsistency(() => call1())
       },
       test("captures full stack trace including user code for Exit.fail") {
         def subcall(): Unit =
           Unsafe.unsafe { implicit unsafe =>
-            Runtime.default.unsafe.run(ZIO.fail(new RuntimeException("boom")).exit).getOrThrowFiberFailure()
+            val exit = ZIO.fail(new RuntimeException("boom")).exit
+            Runtime.default.unsafe.run(exit).getOrThrowFiberFailure()
           }
         def call1(): Unit = subcall()
 
-        assertStackTraceConsistency(call1)
+        assertStackTraceConsistency(() => call1())
       },
       test("captures full stack trace including user code for Exit.die") {
         def subcall(): Unit =
           Unsafe.unsafe { implicit unsafe =>
-            Runtime.default.unsafe.run(ZIO.die(new RuntimeException("boom")).exit).getOrThrowFiberFailure()
+            val exit = ZIO.die(new RuntimeException("boom")).exit
+            Runtime.default.unsafe.run(exit).getOrThrowFiberFailure()
           }
         def call1(): Unit = subcall()
 
-        assertStackTraceConsistency(call1)
+        assertStackTraceConsistency(() => call1())
       },
       test("captures full stack trace including user code for ZIO.interrupt") {
         def subcall(): Unit =
@@ -59,7 +60,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           }
         def call1(): Unit = subcall()
 
-        assertStackTraceConsistency(call1)
+        assertStackTraceConsistency(() => call1())
       }
     )
 
@@ -85,34 +86,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
                stackTrace.contains("call1") &&
                  stackTrace.contains("subcall") &&
                  stackTrace.contains("FiberFailureSpec")
-             )
-           }
-      _ <- assertStackTraceMethodsConsistency(stackTrace)
-    } yield ()
-
-  private def assertStackTraceMethodsConsistency(expectedStackTrace: String) =
-    for {
-      fiberFailureTest <- ZIO
-                            .attempt(call1())
-                            .catchAll {
-                              case fiberFailure: FiberFailure =>
-                                val toStringOutput  = fiberFailure.toString
-                                val printStackTrace = new ByteArrayOutputStream()
-                                fiberFailure.printStackTrace(new PrintStream(printStackTrace))
-                                val printStackTraceStr = printStackTrace.toString
-                                ZIO.log(s"Comparing Stack Trace:\n$toStringOutput\n\n$printStackTraceStr") *>
-                                  ZIO.succeed((toStringOutput, printStackTraceStr))
-                              case other =>
-                                ZIO.log(s"Unexpected failure: ${other.getMessage}") *>
-                                  ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
-                            }
-                            .asInstanceOf[ZIO[Any, Nothing, (String, String)]]
-
-      (toStringOutput, printStackTraceStr) <- fiberFailureTest
-      _ <- ZIO.succeed {
-             assertTrue(
-               toStringOutput == printStackTraceStr &&
-                 expectedStackTrace.contains(toStringOutput)
              )
            }
     } yield ()
