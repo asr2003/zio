@@ -115,7 +115,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
           case other =>
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
-        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
@@ -149,7 +148,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
           case other =>
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
-        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
