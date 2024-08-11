@@ -169,10 +169,10 @@ object FiberSpec extends ZIOBaseSpec {
             Unsafe.unsafe { implicit unsafe =>
               Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
             }
-          def call(): Unit = subcall()
+          def call1(): Unit = subcall()
 
           val fiberFailureTest = ZIO
-            .attempt(call())
+            .attempt(call1())
             .catchAll {
               case fiberFailure: FiberFailure =>
                 val stackTrace = fiberFailure.getStackTrace.mkString("\n")
@@ -186,7 +186,7 @@ object FiberSpec extends ZIOBaseSpec {
           fiberFailureTest.flatMap { stackTrace =>
             ZIO.succeed {
               assertTrue(
-                stackTrace.contains("call") &&
+                stackTrace.contains("call1") &&
                   stackTrace.contains("subcall") &&
                   stackTrace.contains("FiberSpec")
               )
