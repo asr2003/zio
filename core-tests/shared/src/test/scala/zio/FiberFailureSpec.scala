@@ -40,40 +40,40 @@ object FiberFailureSpec extends ZIOBaseSpec {
         val stringFailureTest = for {
           exit        <- ZIO.fail("string failure").exit
           fiberFailure = FiberFailure(exit.cause)
-        } yield verifyStackTraceConsistency(fiberFailure, List("string failure"))
-
+          result      <- verifyStackTraceConsistency(fiberFailure, List("string failure"))
+        } yield result
         val throwableFailureTest = for {
           exit        <- ZIO.fail(new RuntimeException("throwable failure")).exit
           fiberFailure = FiberFailure(exit.cause)
-        } yield verifyStackTraceConsistency(fiberFailure, List("throwable failure"))
+          result      <- verifyStackTraceConsistency(fiberFailure, List("throwable failure"))
+        } yield result
 
         val dieTest = for {
           exit        <- ZIO.die(new RuntimeException("die")).exit
           fiberFailure = FiberFailure(exit.cause)
-        } yield verifyStackTraceConsistency(fiberFailure, List("die"))
+          result      <- verifyStackTraceConsistency(fiberFailure, List("die"))
+        } yield result
 
         val exitFailTest = for {
           exit        <- ZIO.succeed(Exit.fail("exit fail"))
           fiberFailure = FiberFailure(exit.cause)
-        } yield verifyStackTraceConsistency(fiberFailure, List("exit fail"))
+          result      <- verifyStackTraceConsistency(fiberFailure, List("exit fail"))
+        } yield result
 
         val exitDieTest = for {
           exit        <- ZIO.succeed(Exit.die(new RuntimeException("exit die")))
           fiberFailure = FiberFailure(exit.cause)
-        } yield verifyStackTraceConsistency(fiberFailure, List("exit die"))
+          result      <- verifyStackTraceConsistency(fiberFailure, List("exit die"))
+        } yield result
 
         val interruptTest = for {
           fiber       <- ZIO.interrupt.fork
           exit        <- fiber.join.exit
           fiberFailure = FiberFailure(exit.cause)
-        } yield verifyStackTraceConsistency(fiberFailure, List("interruption"))
+          result      <- verifyStackTraceConsistency(fiberFailure, List("interruption"))
+        } yield result
+        stringFailureTest *> throwableFailureTest *> dieTest *> exitFailTest *> exitDieTest *> interruptTest
 
-        stringFailureTest *>
-          throwableFailureTest *>
-          dieTest *>
-          exitFailTest *>
-          exitDieTest *>
-          interruptTest
       },
       test("consistency of getStackTrace, toString, and printStackTrace methods") {
         def subcall(): Unit =
