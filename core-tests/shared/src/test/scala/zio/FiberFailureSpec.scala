@@ -38,40 +38,70 @@ object FiberFailureSpec extends ZIOBaseSpec {
       },
       test("handles different failure modes") {
         val stringFailureTest = for {
-          exit        <- ZIO.fail("string failure").exit
-          fiberFailure = FiberFailure(exit.cause.asInstanceOf[Cause[Any]])
-          result      <- verifyStackTraceConsistency(fiberFailure, List("string failure"))
+          exit <- ZIO.fail("string failure").exit
+          fiberFailure <- ZIO.succeed {
+                            exit match {
+                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
+                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
+                            }
+                          }
+          result <- verifyStackTraceConsistency(fiberFailure, List("string failure"))
         } yield result
 
         val throwableFailureTest = for {
-          exit        <- ZIO.fail(new RuntimeException("throwable failure")).exit
-          fiberFailure = FiberFailure(exit.cause.asInstanceOf[Cause[Any]])
-          result      <- verifyStackTraceConsistency(fiberFailure, List("throwable failure"))
+          exit <- ZIO.fail(new RuntimeException("throwable failure")).exit
+          fiberFailure <- ZIO.succeed {
+                            exit match {
+                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
+                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
+                            }
+                          }
+          result <- verifyStackTraceConsistency(fiberFailure, List("throwable failure"))
         } yield result
 
         val dieTest = for {
-          exit        <- ZIO.die(new RuntimeException("die")).exit
-          fiberFailure = FiberFailure(exit.cause.asInstanceOf[Cause[Any]])
-          result      <- verifyStackTraceConsistency(fiberFailure, List("die"))
+          exit <- ZIO.die(new RuntimeException("die")).exit
+          fiberFailure <- ZIO.succeed {
+                            exit match {
+                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
+                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
+                            }
+                          }
+          result <- verifyStackTraceConsistency(fiberFailure, List("die"))
         } yield result
 
         val exitFailTest = for {
-          exit        <- ZIO.succeed(Exit.fail("exit fail"))
-          fiberFailure = FiberFailure(exit.cause.asInstanceOf[Cause[Any]])
-          result      <- verifyStackTraceConsistency(fiberFailure, List("exit fail"))
+          exit <- ZIO.succeed(Exit.fail("exit fail"))
+          fiberFailure <- ZIO.succeed {
+                            exit match {
+                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
+                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
+                            }
+                          }
+          result <- verifyStackTraceConsistency(fiberFailure, List("exit fail"))
         } yield result
 
         val exitDieTest = for {
-          exit        <- ZIO.succeed(Exit.die(new RuntimeException("exit die")))
-          fiberFailure = FiberFailure(exit.cause.asInstanceOf[Cause[Any]])
-          result      <- verifyStackTraceConsistency(fiberFailure, List("exit die"))
+          exit <- ZIO.succeed(Exit.die(new RuntimeException("exit die")))
+          fiberFailure <- ZIO.succeed {
+                            exit match {
+                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
+                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
+                            }
+                          }
+          result <- verifyStackTraceConsistency(fiberFailure, List("exit die"))
         } yield result
 
         val interruptTest = for {
-          fiber       <- ZIO.interrupt.fork
-          exit        <- fiber.join.exit
-          fiberFailure = FiberFailure(exit.cause.asInstanceOf[Cause[Any]])
-          result      <- verifyStackTraceConsistency(fiberFailure, List("interruption"))
+          fiber <- ZIO.interrupt.fork
+          exit  <- fiber.join.exit
+          fiberFailure <- ZIO.succeed {
+                            exit match {
+                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
+                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
+                            }
+                          }
+          result <- verifyStackTraceConsistency(fiberFailure, List("interruption"))
         } yield result
 
         stringFailureTest *> throwableFailureTest *> dieTest *> exitFailTest *> exitDieTest *> interruptTest
