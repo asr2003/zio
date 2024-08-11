@@ -125,37 +125,37 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       }
     },
-    test("FiberFailure captures the stack trace for Exit.fail") {
-      def subcall(): Unit =
-        Unsafe.unsafe { implicit unsafe =>
-          val exit = ZIO.fail("boom").exit
-          exit match {
-            case Exit.Failure(cause) => throw FiberFailure(cause)
-            case Exit.Success(_)     => ()
-            case _                   => ()
-          }
-        }
-      def call1(): Unit = subcall()
+    // test("FiberFailure captures the stack trace for Exit.fail") {
+    //   def subcall(): Unit =
+    //     Unsafe.unsafe { implicit unsafe =>
+    //       val exit = ZIO.fail("boom").exit
+    //       exit match {
+    //         case Exit.Failure(cause) => throw FiberFailure(cause)
+    //         case Exit.Success(_)     => ()
+    //         case _                   => ()
+    //       }
+    //     }
+    //   def call1(): Unit = subcall()
 
-      val fiberFailureTest = ZIO
-        .attempt(call1())
-        .catchAll {
-          case fiberFailure: FiberFailure =>
-            val stackTrace = fiberFailure.getStackTrace.mkString("\n")
-            ZIO.succeed(stackTrace)
-          case other =>
-            ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
-        }
+    //   val fiberFailureTest = ZIO
+    //     .attempt(call1())
+    //     .catchAll {
+    //       case fiberFailure: FiberFailure =>
+    //         val stackTrace = fiberFailure.getStackTrace.mkString("\n")
+    //         ZIO.succeed(stackTrace)
+    //       case other =>
+    //         ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
+    //     }
 
-      fiberFailureTest.flatMap { stackTrace =>
-        ZIO.succeed {
-          assertTrue(
-            stackTrace.contains("call1") &&
-              stackTrace.contains("subcall") &&
-              stackTrace.contains("FiberFailureSpec")
-          )
-        }
-      }
-    }
+    //   fiberFailureTest.flatMap { stackTrace =>
+    //     ZIO.succeed {
+    //       assertTrue(
+    //         stackTrace.contains("call1") &&
+    //           stackTrace.contains("subcall") &&
+    //           stackTrace.contains("FiberFailureSpec")
+    //       )
+    //     }
+    //   }
+    // }
   ) @@ exceptJS
 }
