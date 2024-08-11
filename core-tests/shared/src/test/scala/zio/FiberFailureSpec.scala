@@ -138,10 +138,11 @@ object FiberFailureSpec extends ZIOBaseSpec {
         .attempt(call1())
         .catchAll {
           case fiberFailure: FiberFailure =>
-            val stackTrace = fiberFailure.getStackTrace.mkString("\n")
+            val stackTrace: String = fiberFailure.getStackTrace.mkString("\n")
             ZIO.succeed(stackTrace)
           case other =>
-            ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
+            val errorMessage: String = s"Unexpected failure: ${other.getMessage}"
+            ZIO.succeed(errorMessage)
         }
         .asInstanceOf[ZIO[Any, Nothing, String]]
 
