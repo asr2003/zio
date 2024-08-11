@@ -106,7 +106,10 @@ object FiberFailureSpec extends ZIOSpecDefault {
     )
   )
 
-  private def verifyStackTraceConsistency(fiberFailure: FiberFailure, expectedStackTrace: List[String]) = {
+  private def verifyStackTraceConsistency(
+    fiberFailure: FiberFailure,
+    expectedStackTrace: List[String]
+  ): UIO[TestResult] = {
     val stackTrace = fiberFailure.getStackTrace.mkString("\n")
 
     val toStringOutput = fiberFailure.toString
@@ -120,7 +123,7 @@ object FiberFailureSpec extends ZIOSpecDefault {
 
     val allStackTraces = List(stackTrace, toStringOutput, printStackTraceOutput)
     ZIO.succeed {
-      assert(
+      assertTrue(
         allStackTraces.forall(trace => expectedStackTrace.forall(trace.toString.contains))
       )
     }
