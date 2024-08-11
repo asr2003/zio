@@ -1,6 +1,5 @@
 package zio
 
-import zio.test.TestAspect._
 import zio.test._
 import zio.test.Assertion._
 import java.io.{ByteArrayOutputStream, PrintStream}
