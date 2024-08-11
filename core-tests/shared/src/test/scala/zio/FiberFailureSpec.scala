@@ -90,8 +90,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           .catchAll { case fiberFailure: FiberFailure =>
             verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
           }
-
-        fiberFailureTest.flatMap(identity)
+        fiberFailureTest
       }
     )
   private def verifyStackTraceConsistency(
