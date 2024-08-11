@@ -2,7 +2,7 @@ package zio
 
 import zio.test.TestAspect._
 import zio.test._
-import java.lang._
+// import java.lang._
 
 object FiberFailureSpec extends ZIOBaseSpec {
 
@@ -134,7 +134,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       def call1(): Unit = subcall()
 
-      val fiberFailureTest: ZIO[Any, Nothing, String] = ZIO
+      val fiberFailureTest = ZIO
         .attempt(call1())
         .catchAll {
           case fiberFailure: FiberFailure =>
@@ -144,7 +144,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
 
-      fiberFailureTest.flatMap { stackTrace: String =>
+      fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
           assertTrue(
             stackTrace.contains("call1") &&
