@@ -1,6 +1,6 @@
 package zio
 
-import zio._
+import zio.test._
 
 object FiberFailureSpec extends ZIOBaseSpec {
 
