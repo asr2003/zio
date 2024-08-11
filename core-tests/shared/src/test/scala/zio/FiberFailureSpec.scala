@@ -2,7 +2,7 @@ package zio
 
 import zio.test.TestAspect._
 import zio.test._
-// import java.lang.Throwable
+import java.lang._
 
 object FiberFailureSpec extends ZIOBaseSpec {
 
@@ -129,10 +129,9 @@ object FiberFailureSpec extends ZIOBaseSpec {
     test("FiberFailure captures the stack trace for ZIO.interrupt") {
       def subcall(): Unit =
         Unsafe.unsafe { implicit unsafe =>
-          val interruptingFiber = ZIO.interrupt.fork
-          Runtime.default.unsafe.run(interruptingFiber.interrupt).getOrThrowFiberFailure()
+          val interruptingFiber = ZIO.interrupt.fork.flatMap(_.join)
+          Runtime.default.unsafe.run(interruptingFiber).getOrThrowFiberFailure()
         }
-
       def call1(): Unit = subcall()
 
       val fiberFailureTest: ZIO[Any, Nothing, String] = ZIO
@@ -145,7 +144,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
 
-      fiberFailureTest.flatMap { stackTrace =>
+      fiberFailureTest.flatMap { stackTrace: String =>
         ZIO.succeed {
           assertTrue(
             stackTrace.contains("call1") &&
