@@ -1,5 +1,6 @@
 package zio
 
+import zio.test._
 import zio.test.TestAspect._
 // import java.lang.Throwable
 
