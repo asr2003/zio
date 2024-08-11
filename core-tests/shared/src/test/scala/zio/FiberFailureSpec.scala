@@ -36,8 +36,8 @@ object FiberFailureSpec extends ZIOBaseSpec {
       test("captures full stack trace including user code for Exit.fail") {
         def subcall(): Unit =
           Unsafe.unsafe { implicit unsafe =>
-            val exit = ZIO.fail(new RuntimeException("boom")).exit
-            Runtime.default.unsafe.run(exit).getOrThrowFiberFailure()
+            val exit = Runtime.default.unsafe.run(ZIO.fail(new RuntimeException("boom")).exit)
+            exit.getOrThrowFiberFailure()
           }
         def call1(): Unit = subcall()
 
@@ -46,8 +46,8 @@ object FiberFailureSpec extends ZIOBaseSpec {
       test("captures full stack trace including user code for Exit.die") {
         def subcall(): Unit =
           Unsafe.unsafe { implicit unsafe =>
-            val exit = ZIO.die(new RuntimeException("boom")).exit
-            Runtime.default.unsafe.run(exit).getOrThrowFiberFailure()
+            val exit = Runtime.default.unsafe.run(ZIO.die(new RuntimeException("boom")).exit)
+            exit.getOrThrowFiberFailure()
           }
         def call1(): Unit = subcall()
 
