@@ -2,7 +2,6 @@ package zio
 
 import zio._
 import zio.test._
-import zio.test.Assertion._
 import java.io.{ByteArrayOutputStream, PrintStream}
 
 object FiberFailureSpec extends ZIOSpecDefault {
@@ -65,7 +64,7 @@ object FiberFailureSpec extends ZIOSpecDefault {
       },
       test("captures the full stack trace for Exit.fail and checks consistency across methods") {
         val exit         = Exit.fail("failure")
-        val fiberFailure = FiberFailure(exit.cause)
+        val fiberFailure = FiberFailure(exit.cause.asInstanceOf[Cause[Any]])
         val expectedStackTrace = List(
           "zio.FiberFailureSpec$.exitFailTestMethod",
           "zio.FiberFailureSpec$.$anonfun$spec$4",
@@ -122,7 +121,7 @@ object FiberFailureSpec extends ZIOSpecDefault {
     val allStackTraces = List(stackTrace, toStringOutput, printStackTraceOutput)
     ZIO.succeed {
       assertTrue(
-        allStackTraces.forall(trace => expectedStackTrace.forall(trace.contains))
+        allStackTraces.forall(trace => expectedStackTrace.forall(trace.toString.contains))
       )
     }
   }
