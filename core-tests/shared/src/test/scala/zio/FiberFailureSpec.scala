@@ -125,7 +125,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           )
         }
       }
-    } @@ exceptJS
+    } @@ exceptJS,
       test ("FiberFailure captures the stack trace for Exit.die") {
         def subcall(): Unit =
           Unsafe.unsafe { implicit unsafe =>
