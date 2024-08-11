@@ -83,18 +83,29 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
   private def assertStackTraceConsistency(call1: () => Unit) =
     for {
-      fiberFailureTest <- ZIO
-                            .attempt(call1())
-                            .catchAll { case fiberFailure: FiberFailure =>
-                              val stackTrace     = cleanStackTrace(fiberFailure.getStackTrace.mkString("\n"))
-                              val toStringOutput = cleanStackTrace(fiberFailure.toString)
-                              val printStackTraceOutput = {
-                                val stream = new ByteArrayOutputStream()
-                                fiberFailure.printStackTrace(new PrintStream(stream))
-                                cleanStackTrace(stream.toString)
-                              }
-                              ZIO.succeed((stackTrace, toStringOutput, printStackTraceOutput))
-                            }
+      fiberFailureTest: ZIO[Any, Nothing, (String, String, String)] <- ZIO
+                                                                         .attempt(call1())
+                                                                         .catchAll { case fiberFailure: FiberFailure =>
+                                                                           val stackTrace = cleanStackTrace(
+                                                                             fiberFailure.getStackTrace.mkString("\n")
+                                                                           )
+                                                                           val toStringOutput =
+                                                                             cleanStackTrace(fiberFailure.toString)
+                                                                           val printStackTraceOutput = {
+                                                                             val stream = new ByteArrayOutputStream()
+                                                                             fiberFailure.printStackTrace(
+                                                                               new PrintStream(stream)
+                                                                             )
+                                                                             cleanStackTrace(stream.toString)
+                                                                           }
+                                                                           ZIO.succeed(
+                                                                             (
+                                                                               stackTrace,
+                                                                               toStringOutput,
+                                                                               printStackTraceOutput
+                                                                             )
+                                                                           )
+                                                                         }
 
       (stackTrace: String, toStringOutput: String, printStackTraceOutput: String) <- fiberFailureTest
       _ <- ZIO.succeed {
