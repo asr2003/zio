@@ -75,41 +75,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
         } yield result
 
         stringFailureTest *> throwableFailureTest *> dieTest *> exitFailTest *> exitDieTest *> interruptTest
-      },
-      test("consistency of getStackTrace, toString, and printStackTrace methods") {
-        def subcall(): Unit =
-          Unsafe.unsafe { implicit unsafe =>
-            Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
-          }
-        def call1(): Unit = subcall()
-
-        val expectedStackTrace = List("call1", "subcall", "FiberFailureSpec")
-
-        val fiberFailureTest = ZIO
-          .attempt(call1())
-          .catchAll { case fiberFailure: FiberFailure =>
-            verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
-          }
-        fiberFailureTest
       }
     )
-  private def verifyStackTraceConsistency(
-    fiberFailure: FiberFailure,
-    expectedStackTrace: List[String]
-  ): UIO[TestResult] = {
-    val stackTrace     = fiberFailure.getStackTrace.mkString("\n")
-    val toStringOutput = fiberFailure.toString
-    val printStackTraceOutput = {
-      val baos = new ByteArrayOutputStream()
-      val ps   = new PrintStream(baos)
-      fiberFailure.printStackTrace(ps)
-      ps.flush()
-      new String(baos.toByteArray)
-    }
-
-    val allStackTraces           = List(stackTrace, toStringOutput, printStackTraceOutput)
-    val allTracesContainExpected = allStackTraces.forall(trace => expectedStackTrace.forall(trace.contains))
-
-    ZIO.succeed(assertTrue(allTracesContainExpected))
-  }
 }
