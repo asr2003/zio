@@ -95,8 +95,10 @@ object FiberFailureSpec extends ZIOBaseSpec {
       ZIO.log(s"printStackTrace output:\n$printStackTraceOutput") *>
       ZIO.succeed {
         val allStackTraces = List(stackTrace, toStringOutput, printStackTraceOutput)
-        val matches = allStackTraces.map(trace => expectedStackTrace.exists(trace.contains))
-        assertTrue(matches.forall(identity))
+        val matches = allStackTraces.forall { trace =>
+          expectedStackTrace.forall(trace.contains)
+        }
+        assertTrue(matches)
       }
   }
 }
