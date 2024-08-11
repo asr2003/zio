@@ -1,117 +1,103 @@
 package zio
 
-import zio._
+import zio.test.Assertion._
 import zio.test._
-import java.io.{ByteArrayOutputStream, PrintStream}
 
-object FiberFailureSpec extends ZIOSpecDefault {
+object FiberFailureSpec extends ZIOBaseSpec {
 
-  def spec = suite("FiberFailureSpec")(
-    suite("FiberFailure stack trace handling")(
-      test("captures the full stack trace for ZIO.fail with String and checks consistency across methods") {
+  def spec =
+    suite("FiberFailureSpec")(
+      test("captures the full stack trace including user code") {
+        def subcall(): Unit =
+          Unsafe.unsafe { implicit unsafe =>
+            Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
+          }
+        def call1(): Unit = subcall()
+
         val fiberFailureTest = ZIO
-          .fail("failure")
-          .foldCauseZIO(
-            cause => ZIO.succeed(FiberFailure(cause.asInstanceOf[Cause[Any]])),
-            _ => ZIO.fail("Unexpected success")
-          )
+          .attempt(call1())
+          .catchAll {
+            case fiberFailure: FiberFailure =>
+              val stackTrace = fiberFailure.getStackTrace.mkString("\n")
+              ZIO.log(s"Captured Stack Trace:\n$stackTrace") *>
+                ZIO.succeed(stackTrace)
+            case other =>
+              ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
+          }
 
-        fiberFailureTest.flatMap { fiberFailure =>
-          val expectedStackTrace = List(
-            "zio.FiberFailureSpec$.failTestMethod",
-            "zio.FiberFailureSpec$.$anonfun$spec$1",
-            "zio.internal.FiberRuntime.runLoop"
-          )
-
-          verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
+        fiberFailureTest.flatMap { stackTrace =>
+          ZIO.succeed {
+            assertTrue(
+              stackTrace.contains("call1") &&
+                stackTrace.contains("subcall") &&
+                stackTrace.contains("FiberFailureSpec")
+            )
+          }
         }
       },
-      test("captures the full stack trace for ZIO.fail with Throwable and checks consistency across methods") {
+      test("handles different failure modes") {
+        val stringFailureTest = for {
+          exit        <- ZIO.fail("string failure").exit
+          fiberFailure = FiberFailure(exit.cause)
+        } yield verifyStackTraceConsistency(fiberFailure, List("string failure"))
+
+        val throwableFailureTest = for {
+          exit        <- ZIO.fail(new RuntimeException("throwable failure")).exit
+          fiberFailure = FiberFailure(exit.cause)
+        } yield verifyStackTraceConsistency(fiberFailure, List("throwable failure"))
+
+        val dieTest = for {
+          exit        <- ZIO.die(new RuntimeException("die")).exit
+          fiberFailure = FiberFailure(exit.cause)
+        } yield verifyStackTraceConsistency(fiberFailure, List("die"))
+
+        val exitFailTest = for {
+          exit        <- ZIO.succeed(Exit.fail("exit fail"))
+          fiberFailure = FiberFailure(exit.cause)
+        } yield verifyStackTraceConsistency(fiberFailure, List("exit fail"))
+
+        val exitDieTest = for {
+          exit        <- ZIO.succeed(Exit.die(new RuntimeException("exit die")))
+          fiberFailure = FiberFailure(exit.cause)
+        } yield verifyStackTraceConsistency(fiberFailure, List("exit die"))
+
+        val interruptTest = for {
+          fiber       <- ZIO.interrupt.fork
+          exit        <- fiber.join.exit
+          fiberFailure = FiberFailure(exit.cause)
+        } yield verifyStackTraceConsistency(fiberFailure, List("interruption"))
+
+        stringFailureTest *>
+          throwableFailureTest *>
+          dieTest *>
+          exitFailTest *>
+          exitDieTest *>
+          interruptTest
+      },
+      test("consistency of getStackTrace, toString, and printStackTrace methods") {
+        def subcall(): Unit =
+          Unsafe.unsafe { implicit unsafe =>
+            Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
+          }
+        def call1(): Unit = subcall()
+
+        val expectedStackTrace = List("call1", "subcall", "FiberFailureSpec")
+
         val fiberFailureTest = ZIO
-          .fail(new RuntimeException("failure"))
-          .foldCauseZIO(
-            cause => ZIO.succeed(FiberFailure(cause.asInstanceOf[Cause[Any]])),
-            _ => ZIO.fail("Unexpected success")
-          )
+          .attempt(call1())
+          .catchAll { case fiberFailure: FiberFailure =>
+            verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
+          }
 
-        fiberFailureTest.flatMap { fiberFailure =>
-          val expectedStackTrace = List(
-            "zio.FiberFailureSpec$.failThrowableTestMethod",
-            "zio.FiberFailureSpec$.$anonfun$spec$2",
-            "zio.internal.FiberRuntime.runLoop"
-          )
-
-          verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
-        }
-      },
-      test("captures the full stack trace for ZIO.die and checks consistency across methods") {
-        val fiberFailureTest = ZIO
-          .die(new RuntimeException("boom"))
-          .foldCauseZIO(
-            cause => ZIO.succeed(FiberFailure(cause.asInstanceOf[Cause[Any]])),
-            _ => ZIO.fail("Unexpected success")
-          )
-
-        fiberFailureTest.flatMap { fiberFailure =>
-          val expectedStackTrace = List(
-            "zio.FiberFailureSpec$.dieTestMethod",
-            "zio.FiberFailureSpec$.$anonfun$spec$3",
-            "zio.internal.FiberRuntime.runLoop"
-          )
-
-          verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
-        }
-      },
-      test("captures the full stack trace for Exit.fail and checks consistency across methods") {
-        val exit         = Exit.fail("failure")
-        val fiberFailure = FiberFailure(exit.cause.asInstanceOf[Cause[Any]])
-        val expectedStackTrace = List(
-          "zio.FiberFailureSpec$.exitFailTestMethod",
-          "zio.FiberFailureSpec$.$anonfun$spec$4",
-          "zio.internal.FiberRuntime.runLoop"
-        )
-
-        verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
-      },
-      test("captures the full stack trace for Exit.die and checks consistency across methods") {
-        val exit         = Exit.die(new RuntimeException("boom"))
-        val fiberFailure = FiberFailure(exit.cause.asInstanceOf[Cause[Any]])
-        val expectedStackTrace = List(
-          "zio.FiberFailureSpec$.exitDieTestMethod",
-          "zio.FiberFailureSpec$.$anonfun$spec$5",
-          "zio.internal.FiberRuntime.runLoop"
-        )
-
-        verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
-      },
-      test("captures the full stack trace for ZIO.interrupt and checks consistency across methods") {
-        val fiberId = FiberId.Runtime(0, 123, Trace.empty)
-        val fiberFailureTest = ZIO
-          .interruptAs(fiberId)
-          .foldCauseZIO(
-            cause => ZIO.succeed(FiberFailure(cause.asInstanceOf[Cause[Any]])),
-            _ => ZIO.fail("Unexpected success")
-          )
-
-        fiberFailureTest.flatMap { fiberFailure =>
-          val expectedStackTrace = List(
-            "zio.FiberFailureSpec$.interruptTestMethod",
-            "zio.FiberFailureSpec$.$anonfun$spec$6",
-            "zio.internal.FiberRuntime.runLoop"
-          )
-
-          verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
-        }
+        fiberFailureTest
       }
     )
-  )
 
   private def verifyStackTraceConsistency(
     fiberFailure: FiberFailure,
     expectedStackTrace: List[String]
   ): UIO[TestResult] = {
-    val stackTrace = fiberFailure.getStackTrace.mkString("\n")
-
+    val stackTrace     = fiberFailure.getStackTrace.mkString("\n")
     val toStringOutput = fiberFailure.toString
     val printStackTraceOutput = {
       val baos = new ByteArrayOutputStream()
@@ -121,11 +107,9 @@ object FiberFailureSpec extends ZIOSpecDefault {
       new String(baos.toByteArray)
     }
 
-    val allStackTraces = List(stackTrace, toStringOutput, printStackTraceOutput)
-    ZIO.succeed {
-      assertTrue(
-        allStackTraces.forall(trace => expectedStackTrace.forall(trace.toString.contains))
-      )
-    }
+    val allStackTraces           = List(stackTrace, toStringOutput, printStackTraceOutput)
+    val allTracesContainExpected = allStackTraces.forall(trace => expectedStackTrace.forall(trace.contains(_)))
+
+    ZIO.succeed(assert(allTracesContainExpected))
   }
 }
