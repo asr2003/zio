@@ -22,107 +22,59 @@ object FiberFailureSpec extends ZIOBaseSpec {
               ZIO.log(s"Captured Stack Trace:\n$stackTrace") *>
                 ZIO.succeed(stackTrace)
             case other =>
-              ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
+              ZIO.log(s"Unexpected failure: ${other.getMessage}") *>
+                ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
           }
           .asInstanceOf[ZIO[Any, Nothing, String]]
 
         fiberFailureTest.flatMap { stackTrace =>
-          ZIO.succeed {
-            assertTrue(
-              stackTrace.contains("call1") &&
-                stackTrace.contains("subcall") &&
-                stackTrace.contains("FiberFailureSpec")
-            )
-          }
+          ZIO.log(s"Asserting stack trace:\n$stackTrace") *>
+            ZIO.succeed {
+              assertTrue(
+                stackTrace.contains("call1") &&
+                  stackTrace.contains("subcall") &&
+                  stackTrace.contains("FiberFailureSpec")
+              )
+            }
         }
       },
       test("handles different failure modes") {
-        val stringFailureTest = for {
-          exit <- ZIO.fail("string failure").exit
-          fiberFailure <- ZIO.succeed {
-                            exit match {
-                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
-                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
-                            }
-                          }
-          result <- verifyStackTraceConsistency(fiberFailure, List("string failure"))
-        } yield result
+        def checkFailure(exit: Exit[Any, Any], expectedMessage: String): UIO[TestResult] = exit match {
+          case Exit.Failure(cause) =>
+            ZIO.log(s"Handling failure: $expectedMessage") *>
+              ZIO
+                .succeed(FiberFailure(cause.asInstanceOf[Cause[Any]]))
+                .flatMap(verifyStackTraceConsistency(_, List(expectedMessage)))
+          case Exit.Success(_) =>
+            ZIO.log(s"Unexpected success for: $expectedMessage") *>
+              ZIO.succeed(assertTrue(false, "Expected failure but got success"))
+        }
 
-        val throwableFailureTest = for {
-          exit <- ZIO.fail(new RuntimeException("throwable failure")).exit
-          fiberFailure <- ZIO.succeed {
-                            exit match {
-                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
-                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
-                            }
-                          }
-          result <- verifyStackTraceConsistency(fiberFailure, List("throwable failure"))
-        } yield result
-
-        val dieTest = for {
-          exit <- ZIO.die(new RuntimeException("die")).exit
-          fiberFailure <- ZIO.succeed {
-                            exit match {
-                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
-                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
-                            }
-                          }
-          result <- verifyStackTraceConsistency(fiberFailure, List("die"))
-        } yield result
-
-        val exitFailTest = for {
-          exit <- ZIO.succeed(Exit.fail("exit fail"))
-          fiberFailure <- ZIO.succeed {
-                            exit match {
-                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
-                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
-                            }
-                          }
-          result <- verifyStackTraceConsistency(fiberFailure, List("exit fail"))
-        } yield result
-
-        val exitDieTest = for {
-          exit <- ZIO.succeed(Exit.die(new RuntimeException("exit die")))
-          fiberFailure <- ZIO.succeed {
-                            exit match {
-                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
-                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
-                            }
-                          }
-          result <- verifyStackTraceConsistency(fiberFailure, List("exit die"))
-        } yield result
-
-        val interruptTest = for {
-          fiber <- ZIO.interrupt.fork
-          exit  <- fiber.join.exit
-          fiberFailure <- ZIO.succeed {
-                            exit match {
-                              case failure: Exit.Failure[_] => FiberFailure(failure.cause.asInstanceOf[Cause[Any]])
-                              case success                  => throw new RuntimeException(s"Unexpected success: $success")
-                            }
-                          }
-          result <- verifyStackTraceConsistency(fiberFailure, List("interruption"))
-        } yield result
-
-        stringFailureTest *> throwableFailureTest *> dieTest *> exitFailTest *> exitDieTest *> interruptTest
+        for {
+          stringFailure <- ZIO.fail("string failure").exit.tap(exit => ZIO.log(s"String failure exit: $exit"))
+          throwableFailure <- ZIO
+                                .fail(new RuntimeException("throwable failure"))
+                                .exit
+                                .tap(exit => ZIO.log(s"Throwable failure exit: $exit"))
+          dieFailure <- ZIO.die(new RuntimeException("die")).exit.tap(exit => ZIO.log(s"Die failure exit: $exit"))
+          exitFail   <- ZIO.fail("exit fail").exit.tap(exit => ZIO.log(s"Exit fail exit: $exit"))
+          exitDie    <- ZIO.die(new RuntimeException("exit die")).exit.tap(exit => ZIO.log(s"Exit die exit: $exit"))
+          interruptFailure <-
+            ZIO.interrupt.fork.flatMap(_.join.exit).tap(exit => ZIO.log(s"Interrupt failure exit: $exit"))
+          results <- ZIO.collectAll(
+                       List(
+                         checkFailure(stringFailure, "string failure"),
+                         checkFailure(throwableFailure, "throwable failure"),
+                         checkFailure(dieFailure, "die"),
+                         checkFailure(exitFail, "exit fail"),
+                         checkFailure(exitDie, "exit die"),
+                         checkFailure(interruptFailure, "interruption")
+                       )
+                     )
+        } yield assertTrue(results.forall(_.isSuccess))
       }
-      // test("consistency of getStackTrace, toString, and printStackTrace methods") {
-      //   def subcall(): Unit =
-      //     Unsafe.unsafe { implicit unsafe =>
-      //       Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
-      //     }
-      //   def call1(): Unit = subcall()
-
-      //   val expectedStackTrace = List("call1", "subcall", "FiberFailureSpec")
-
-      //   val fiberFailureTest = ZIO
-      //     .attempt(call1())
-      //     .catchAll { case fiberFailure: FiberFailure =>
-      //       verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
-      //     }
-      //   fiberFailureTest
-      // }
     )
+
   private def verifyStackTraceConsistency(
     fiberFailure: FiberFailure,
     expectedStackTrace: List[String]
@@ -137,9 +89,13 @@ object FiberFailureSpec extends ZIOBaseSpec {
       new String(baos.toByteArray)
     }
 
-    val allStackTraces           = List(stackTrace, toStringOutput, printStackTraceOutput)
-    val allTracesContainExpected = allStackTraces.forall(trace => expectedStackTrace.forall(trace.contains))
-
-    ZIO.succeed(assertTrue(allTracesContainExpected))
+    ZIO.log(s"Verifying stack trace consistency for:\n$stackTrace") *>
+      ZIO.log(s"toString output:\n$toStringOutput") *>
+      ZIO.log(s"printStackTrace output:\n$printStackTraceOutput") *>
+      ZIO.succeed {
+        val allStackTraces           = List(stackTrace, toStringOutput, printStackTraceOutput)
+        val allTracesContainExpected = allStackTraces.forall(trace => expectedStackTrace.forall(trace.contains))
+        assertTrue(allTracesContainExpected)
+      }
   }
 }
