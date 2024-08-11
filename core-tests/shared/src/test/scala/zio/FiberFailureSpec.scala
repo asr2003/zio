@@ -2,7 +2,7 @@ package zio
 
 import zio.test.TestAspect._
 import zio.test._
-// import java.lang._
+import java.lang._
 
 object FiberFailureSpec extends ZIOBaseSpec {
 
@@ -144,7 +144,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
             val errorMessage: String = s"Unexpected failure: ${other.getMessage}"
             ZIO.succeed(errorMessage)
         }
-        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
