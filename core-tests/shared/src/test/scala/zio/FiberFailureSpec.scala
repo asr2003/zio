@@ -91,7 +91,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
             verifyStackTraceConsistency(fiberFailure, expectedStackTrace)
           }
 
-        fiberFailureTest
+        fiberFailureTest.flatMap(identity)
       }
     )
   private def verifyStackTraceConsistency(
@@ -109,8 +109,8 @@ object FiberFailureSpec extends ZIOBaseSpec {
     }
 
     val allStackTraces           = List(stackTrace, toStringOutput, printStackTraceOutput)
-    val allTracesContainExpected = allStackTraces.forall(trace => expectedStackTrace.forall(trace.contains(_)))
+    val allTracesContainExpected = allStackTraces.forall(trace => expectedStackTrace.forall(trace.contains))
 
-    ZIO.succeed(assert(allTracesContainExpected))
+    ZIO.succeed(assertTrue(allTracesContainExpected))
   }
 }
