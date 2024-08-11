@@ -12,7 +12,7 @@ object FiberFailureSpec extends ZIOSpecDefault {
         val fiberFailureTest = ZIO
           .fail("failure")
           .foldCauseZIO(
-            cause => ZIO.succeed(FiberFailure(cause)),
+            cause => ZIO.succeed(FiberFailure(cause.asInstanceOf[Cause[Any]])),
             _ => ZIO.fail("Unexpected success")
           )
 
@@ -30,7 +30,7 @@ object FiberFailureSpec extends ZIOSpecDefault {
         val fiberFailureTest = ZIO
           .fail(new RuntimeException("failure"))
           .foldCauseZIO(
-            cause => ZIO.succeed(FiberFailure(cause)),
+            cause => ZIO.succeed(FiberFailure(cause.asInstanceOf[Cause[Any]])),
             _ => ZIO.fail("Unexpected success")
           )
 
@@ -48,7 +48,7 @@ object FiberFailureSpec extends ZIOSpecDefault {
         val fiberFailureTest = ZIO
           .die(new RuntimeException("boom"))
           .foldCauseZIO(
-            cause => ZIO.succeed(FiberFailure(cause)),
+            cause => ZIO.succeed(FiberFailure(cause.asInstanceOf[Cause[Any]])),
             _ => ZIO.fail("Unexpected success")
           )
 
@@ -75,7 +75,7 @@ object FiberFailureSpec extends ZIOSpecDefault {
       },
       test("captures the full stack trace for Exit.die and checks consistency across methods") {
         val exit         = Exit.die(new RuntimeException("boom"))
-        val fiberFailure = FiberFailure(exit.cause)
+        val fiberFailure = FiberFailure(exit.cause.asInstanceOf[Cause[Any]])
         val expectedStackTrace = List(
           "zio.FiberFailureSpec$.exitDieTestMethod",
           "zio.FiberFailureSpec$.$anonfun$spec$5",
@@ -89,7 +89,7 @@ object FiberFailureSpec extends ZIOSpecDefault {
         val fiberFailureTest = ZIO
           .interruptAs(fiberId)
           .foldCauseZIO(
-            cause => ZIO.succeed(FiberFailure(cause)),
+            cause => ZIO.succeed(FiberFailure(cause.asInstanceOf[Cause[Any]])),
             _ => ZIO.fail("Unexpected success")
           )
 
@@ -120,7 +120,7 @@ object FiberFailureSpec extends ZIOSpecDefault {
 
     val allStackTraces = List(stackTrace, toStringOutput, printStackTraceOutput)
     ZIO.succeed {
-      assertTrue(
+      assert(
         allStackTraces.forall(trace => expectedStackTrace.forall(trace.toString.contains))
       )
     }
