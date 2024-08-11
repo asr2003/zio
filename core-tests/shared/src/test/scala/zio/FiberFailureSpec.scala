@@ -7,14 +7,14 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 
 object FiberFailureSpec extends ZIOBaseSpec {
   def spec = suite("FiberFailureSpec")(
-    test("FiberFailure getStackTrace includes both ZIO and Java stack traces") {
-      val fiberFailure = FiberFailure(Cause.fail(new Exception("Test Exception")))
+    test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
+      val exception    = new Exception("Test Exception")
+      val fiberFailure = FiberFailure(Cause.fail(exception))
       val stackTrace   = fiberFailure.getStackTrace
-      ZIO.log(s"Captured Stack Trace:\n$stackTrace")
 
       assertTrue(
-        stackTrace.exists(_.getClassName.contains("FiberFailureSpec")),
-        stackTrace.exists(_.getClassName.contains("java.lang.Exception"))
+        stackTrace.exists(_.getClassName.contains("FiberFailureSpec")), // User code presence
+        stackTrace.exists(_.getClassName.startsWith("zio."))            // ZIO internals presence
       )
     },
     test("FiberFailure toString should match cause.prettyPrint") {
@@ -126,37 +126,5 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       }
     }
-    // test("FiberFailure captures the stack trace for Exit.fail") {
-    //   def subcall(): Unit =
-    //     Unsafe.unsafe { implicit unsafe =>
-    //       val exit = ZIO.fail("boom").exit
-    //       exit match {
-    //         case Exit.Failure(cause) => throw FiberFailure(cause)
-    //         case Exit.Success(_)     => ()
-    //         case _                   => ()
-    //       }
-    //     }
-    //   def call1(): Unit = subcall()
-
-    //   val fiberFailureTest = ZIO
-    //     .attempt(call1())
-    //     .catchAll {
-    //       case fiberFailure: FiberFailure =>
-    //         val stackTrace = fiberFailure.getStackTrace.mkString("\n")
-    //         ZIO.succeed(stackTrace)
-    //       case other =>
-    //         ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
-    //     }
-
-    //   fiberFailureTest.flatMap { stackTrace =>
-    //     ZIO.succeed {
-    //       assertTrue(
-    //         stackTrace.contains("call1") &&
-    //           stackTrace.contains("subcall") &&
-    //           stackTrace.contains("FiberFailureSpec")
-    //       )
-    //     }
-    //   }
-    // }
-  ) @@ exceptJS
+  )
 }
