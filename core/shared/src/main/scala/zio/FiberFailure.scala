@@ -17,6 +17,7 @@
 package zio
 
 import zio.stacktracer.TracingImplicits.disableAutoTrace
+import java.lang.System.arraycopy
 
 /**
  * Represents a failure in a fiber. This could be caused by some non-
@@ -41,10 +42,10 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     val zioStackTrace  = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
     val javaStackTrace = super.getStackTrace()
 
-    // Combine both stack traces into a single array
+    // Combine both stack traces into a single array with minimal allocations
     val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + javaStackTrace.length)
-    System.arraycopy(zioStackTrace, 0, combinedStackTrace, 0, zioStackTrace.length)
-    System.arraycopy(javaStackTrace, 0, combinedStackTrace, zioStackTrace.length, javaStackTrace.length)
+    arraycopy(zioStackTrace, 0, combinedStackTrace, 0, zioStackTrace.length)
+    arraycopy(javaStackTrace, 0, combinedStackTrace, zioStackTrace.length, javaStackTrace.length)
 
     combinedStackTrace
   }
@@ -62,4 +63,8 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
   override def toString =
     cause.prettyPrint
 
+}
+
+object FiberFailure {
+  def apply(cause: Cause[Any]): FiberFailure = new FiberFailure(cause)
 }
