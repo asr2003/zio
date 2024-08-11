@@ -106,7 +106,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       def call1(): Unit = subcall()
 
-      val fiberFailureTest = ZIO
+      val fiberFailureTest: ZIO[Any, Nothing, String] = ZIO
         .attempt(call1())
         .catchAll {
           case fiberFailure: FiberFailure =>
@@ -139,7 +139,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
         def call1(): Unit = subcall()
 
-        val fiberFailureTest = ZIO
+        val fiberFailureTest: ZIO[Any, Nothing, String] = ZIO
           .attempt(call1())
           .catchAll {
             case fiberFailure: FiberFailure =>
@@ -158,7 +158,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
             )
           }
         }
-      } @@exceptJS
+      } @@ exceptJS
 
     // test("FiberFailure captures the stack trace for ZIO.interrupt") {
     //   val interruptingFiber = ZIO.interrupt.fork
