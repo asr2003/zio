@@ -1,6 +1,7 @@
 package zio
 
 import zio.test._
+import java.io.{ByteArrayOutputStream, PrintStream}
 
 object FiberFailureSpec extends ZIOBaseSpec {
 
