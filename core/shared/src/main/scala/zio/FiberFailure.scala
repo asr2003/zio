@@ -39,7 +39,6 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
 
   override def getStackTrace(): Array[StackTraceElement] = {
     val zioStackTrace  = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
-    val javaStackTrace = super.getStackTrace()
 
     // Combine both stack traces into a single array with minimal allocations
     val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + javaStackTrace.length)
