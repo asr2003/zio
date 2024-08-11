@@ -129,7 +129,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
       test ("FiberFailure captures the stack trace for Exit.die") {
         def subcall(): Unit =
           Unsafe.unsafe { implicit unsafe =>
-            // Simulate a fiber death by causing a defect with Exit.die
             val exit = ZIO.die(new RuntimeException("boom")).exit
             exit match {
               case Exit.Failure(cause) => throw FiberFailure(cause)
@@ -159,7 +158,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
             )
           }
         }
-      } exceptJS,
+      } @@exceptJS
 
     // test("FiberFailure captures the stack trace for ZIO.interrupt") {
     //   val interruptingFiber = ZIO.interrupt.fork
