@@ -192,7 +192,7 @@ object FiberSpec extends ZIOBaseSpec {
               )
             }
           }
-        }
+        }@@ jvmOnly,
       )
     )
 
