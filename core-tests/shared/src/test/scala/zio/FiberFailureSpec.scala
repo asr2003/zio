@@ -47,7 +47,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
                 .flatMap(verifyStackTraceConsistency(_, List(expectedMessage)))
           case Exit.Success(_) =>
             ZIO.log(s"Unexpected success for: $expectedMessage") *>
-              ZIO.succeed(assertTrue(false, "Expected failure but got success"))
+              ZIO.succeed(assertTrue(false) ?? "Expected failure but got success")
         }
 
         for {
