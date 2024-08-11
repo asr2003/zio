@@ -29,11 +29,10 @@ import java.lang.System.arraycopy
  */
 final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, true) {
 
-  private var javaStackTrace: Array[StackTraceElement] = Thread.currentThread().getStackTrace
-
-  def this(cause: Cause[Any], javaStackTrace: Array[StackTraceElement]) = {
-    this(cause)
-    this.javaStackTrace = javaStackTrace
+  private val javaStackTrace: Array[StackTraceElement] = {
+    val fullStackTrace     = Thread.currentThread().getStackTrace
+    val userCodeStartIndex = fullStackTrace.indexWhere(!_.getClassName.startsWith("zio."))
+    if (userCodeStartIndex > 0) fullStackTrace.drop(userCodeStartIndex) else fullStackTrace
   }
 
   override def getMessage: String = cause.unified.headOption.fold("<unknown>")(_.message)
