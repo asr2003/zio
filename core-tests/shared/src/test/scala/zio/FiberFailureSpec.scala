@@ -101,6 +101,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           exit match {
             case Exit.Failure(cause) => throw FiberFailure(cause)
             case Exit.Success(_)     => ()
+            case _                   => ()
           }
         }
       def call1(): Unit = subcall()
