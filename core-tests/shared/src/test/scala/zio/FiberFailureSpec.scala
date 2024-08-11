@@ -1,6 +1,5 @@
 package zio
 
-import zio.test.Assertion._
 import zio.test._
 import java.io.{ByteArrayOutputStream, PrintStream}
 
@@ -25,6 +24,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
             case other =>
               ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
           }
+          .asInstanceOf[ZIO[Any, Nothing, String]]
 
         fiberFailureTest.flatMap { stackTrace =>
           ZIO.succeed {
@@ -94,7 +94,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
         fiberFailureTest
       }
     )
-
   private def verifyStackTraceConsistency(
     fiberFailure: FiberFailure,
     expectedStackTrace: List[String]
