@@ -106,7 +106,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       def call1(): Unit = subcall()
 
-      val fiberFailureTest: ZIO[Any, Nothing, String] = ZIO
+      val fiberFailureTest = ZIO
         .attempt(call1())
         .catchAll {
           case fiberFailure: FiberFailure =>
@@ -115,6 +115,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           case other =>
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
+        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
@@ -139,15 +140,16 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
       def call1(): Unit = subcall()
 
-      val fiberFailureTest: ZIO[Any, Nothing, String] = ZIO
+      val fiberFailureTest = ZIO
         .attempt(call1())
         .catchAll {
           case fiberFailure: FiberFailure =>
             val stackTrace = fiberFailure.getStackTrace.mkString("\n")
-            ZIO.succeed(stackTrace)
+            ZIO.succeed(stackTrace).asInstanceOf[ZIO[Any, Nothing, String]]
           case other =>
-            ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
+            ZIO.succeed(s"Unexpected failure: ${other.getMessage}").asInstanceOf[ZIO[Any, Nothing, String]]
         }
+        .asInstanceOf[ZIO[Any, Nothing, String]]
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
