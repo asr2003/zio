@@ -26,25 +26,27 @@ import zio.stacktracer.TracingImplicits.disableAutoTrace
  * This class is used to wrap ZIO failures into something that can be thrown, to
  * better integrate with Scala exception handling.
  */
-final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, false) {
+final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, true) {
 
   private var javaStackTrace: Array[StackTraceElement] = Thread.currentThread().getStackTrace
 
-  // def this(cause: Cause[Any], javaStackTrace: Array[StackTraceElement]) = {
-  //   this(cause)
-  //   this.javaStackTrace = javaStackTrace
-  // }
-
-  def withStackTrace(javaStackTrace: Array[StackTraceElement]): FiberFailure = {
+  def this(cause: Cause[Any], javaStackTrace: Array[StackTraceElement]) = {
+    this(cause)
     this.javaStackTrace = javaStackTrace
-    this
   }
 
   override def getMessage: String = cause.unified.headOption.fold("<unknown>")(_.message)
 
   override def getStackTrace(): Array[StackTraceElement] = {
-    val zioStackTrace = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
-    zioStackTrace ++ javaStackTrace
+    val zioStackTrace  = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
+    val javaStackTrace = super.getStackTrace()
+
+    // Combine both stack traces into a single array
+    val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + javaStackTrace.length)
+    System.arraycopy(zioStackTrace, 0, combinedStackTrace, 0, zioStackTrace.length)
+    System.arraycopy(javaStackTrace, 0, combinedStackTrace, zioStackTrace.length, javaStackTrace.length)
+
+    combinedStackTrace
   }
 
   override def getCause(): Throwable =
@@ -60,11 +62,4 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
   override def toString =
     cause.prettyPrint
 
-}
-
-object FiberFailure {
-  def apply(cause: Cause[Any]): FiberFailure = new FiberFailure(cause)
-
-  def apply(cause: Cause[Any], javaStackTrace: Array[StackTraceElement]): FiberFailure =
-    new FiberFailure(cause).withStackTrace(javaStackTrace)
 }
