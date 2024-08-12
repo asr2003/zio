@@ -1,7 +1,6 @@
 package zio
 
 import zio.test._
-import zio.test.Assertion._
 import zio.test.TestAspect._
 import java.io.{ByteArrayOutputStream, PrintStream}
 
@@ -39,14 +38,13 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       }
     },
-    test("FiberFailure toString should match expected string including stack trace") {
+    test("FiberFailure toString should include cause.prettyPrint and stack trace") {
       val cause        = Cause.fail(new Exception("Test Exception"))
       val fiberFailure = FiberFailure(cause)
+      val expectedOutput = cause.prettyPrint + "\n" + fiberFailure.getStackTrace.mkString("\n")
 
-      val expectedString = fiberFailure.prettyPrint + "\n" + fiberFailure.stackTrace.mkString("\n")
-
-      assertTrue(fiberFailure.toString.contains(expectedString))
-    }
+      assertTrue(fiberFailure.toString.contains(expectedOutput))
+    },
       test ("FiberFailure printStackTrace should correctly output the stack trace") {
         val cause        = Cause.fail(new Exception("Test Exception"))
         val fiberFailure = FiberFailure(cause)
