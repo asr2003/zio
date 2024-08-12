@@ -14,17 +14,13 @@ object FiberFailureSpec extends ZIOBaseSpec {
     "zio.internal.FiberRuntime.runLoop"
   )
 
-  def validateStackTrace(stackTrace: String): Boolean = {
-    val fullExpectedStackTrace = expectedStackTrace
-    fullExpectedStackTrace.forall(expected => stackTrace.contains(expected))
-  }
   def spec = suite("FiberFailureSpec")(
     test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
       val exception    = new Exception("Test Exception")
       val fiberFailure = FiberFailure(Cause.fail(exception))
       val stackTrace   = fiberFailure.getStackTrace.map(_.toString).mkString("\n")
 
-      assertTrue(validateStackTrace(stackTrace))
+      assertTrue(expectedStackTrace.forall(stackTrace.contains))
     },
     test("FiberFailure toString should match cause.prettyPrint") {
       val cause        = Cause.fail(new Exception("Test Exception"))
@@ -72,7 +68,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           assertTrue(
             stackTrace.contains("call1") &&
               stackTrace.contains("subcall") &&
-              validateStackTrace(stackTrace)
+              expectedStackTrace.forall(stackTrace.contains)
           )
         }
       }
@@ -101,7 +97,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           assertTrue(
             stackTrace.contains("call1") &&
               stackTrace.contains("subcall") &&
-              validateStackTrace(stackTrace)
+              expectedStackTrace.forall(stackTrace.contains)
           )
         }
       }
@@ -130,7 +126,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           assertTrue(
             stackTrace.contains("call1") &&
               stackTrace.contains("subcall") &&
-              validateStackTrace(stackTrace)
+              expectedStackTrace.forall(stackTrace.contains)
           )
         }
       }
