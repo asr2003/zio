@@ -38,6 +38,30 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       }
     },
+    test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
+      def subcall(): Unit =
+        Unsafe.unsafe { implicit unsafe =>
+          Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
+        }
+
+      val stackTrace = ZIO
+        .attempt(subcall())
+        .catchAll {
+          case fiberFailure: FiberFailure =>
+            val stackTraceStr = fiberFailure.getStackTrace.map(_.toString).mkString("\n")
+            ZIO.log(s"Captured Stack Trace:\n$stackTraceStr") *>
+              ZIO.succeed(stackTraceStr)
+          case other =>
+            ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
+        }
+        .asInstanceOf[ZIO[Any, Nothing, String]]
+
+      stackTrace.flatMap { trace =>
+        ZIO.succeed {
+          assertTrue(expectedStackTrace.forall(element => trace.contains(element)))
+        }
+      }
+    },
     test("FiberFailure printStackTrace should correctly output the stack trace") {
       val cause        = Cause.fail(new Exception("Test Exception"))
       val fiberFailure = FiberFailure(cause)
@@ -54,25 +78,25 @@ object FiberFailureSpec extends ZIOBaseSpec {
         stackTraceOutput.contains("Test Exception")
       )
     },
-test("FiberFailure toString should match cause.prettyPrint output") {
-  def subcall(): Unit =
-    Unsafe.unsafe { implicit unsafe =>
-      Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
-    }
+    test("FiberFailure toString should match cause.prettyPrint output") {
+      def subcall(): Unit =
+        Unsafe.unsafe { implicit unsafe =>
+          Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
+        }
 
-  val result = ZIO
-    .attempt(subcall())
-    .catchAll {
-      case fiberFailure: FiberFailure =>
-        val expectedOutput = fiberFailure.cause.prettyPrint
-        ZIO.succeed(assertTrue(fiberFailure.toString == expectedOutput))
-      case other =>
-        ZIO.succeed(assertTrue(false, s"Unexpected failure: ${other.getMessage}"))
-    }
-    .asInstanceOf[ZIO[Any, Nothing, TestResult]]
+      val result = ZIO
+        .attempt(subcall())
+        .catchAll {
+          case fiberFailure: FiberFailure =>
+            val expectedOutput = fiberFailure.cause.prettyPrint
+            ZIO.succeed(assertTrue(fiberFailure.toString == expectedOutput))
+          case other =>
+            ZIO.succeed(assertTrue(false, s"Unexpected failure: ${other.getMessage}"))
+        }
+        .asInstanceOf[ZIO[Any, Nothing, TestResult]]
 
-  result
-},
+      result
+    },
     test("FiberFailure captures the stack trace for ZIO.fail with String") {
       def subcall(): Unit =
         Unsafe.unsafe { implicit unsafe =>
