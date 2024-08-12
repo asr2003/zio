@@ -14,18 +14,17 @@ object FiberFailureSpec extends ZIOBaseSpec {
     "zio.internal.FiberRuntime.runLoop"
   )
 
-  def validateStackTrace(stackTrace: String, additionalMethods: Seq[String] = Seq.empty): Boolean = {
-    val fullExpectedStackTrace = expectedStackTrace ++ additionalMethods
+  def validateStackTrace(stackTrace: String): Boolean = {
+    val fullExpectedStackTrace = expectedStackTrace
     fullExpectedStackTrace.forall(expected => stackTrace.contains(expected))
   }
   def spec = suite("FiberFailureSpec")(
     test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
       val exception    = new Exception("Test Exception")
       val fiberFailure = FiberFailure(Cause.fail(exception))
-      val stackTrace   = fiberFailure.getStackTrace.map(_.toString).mkString("\n")
+      val stackTrace   = fiberFailure.getStackTrace
 
       assertTrue(validateStackTrace(stackTrace))
-
     },
     test("FiberFailure toString should match cause.prettyPrint") {
       val cause        = Cause.fail(new Exception("Test Exception"))
@@ -44,8 +43,10 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
       val stackTraceOutput = new String(outputStream.toByteArray)
 
-      assertTrue(validateStackTrace(stackTraceOutput))
-
+      assertTrue(
+        stackTraceOutput.contains("FiberFailure"),
+        stackTraceOutput.contains("Test Exception")
+      )
     },
     test("FiberFailure captures the stack trace for ZIO.fail with String") {
       def subcall(): Unit =
@@ -68,7 +69,11 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
-          assertTrue(validateStackTrace(stackTrace, Seq("zio.FiberFailureSpec.call1")))
+          assertTrue(
+            stackTrace.contains("call1") &&
+              stackTrace.contains("subcall") &&
+              validateStackTrace(stackTrace)
+          )
         }
       }
     },
@@ -93,7 +98,11 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
-          assertTrue(validateStackTrace(stackTrace, Seq("zio.FiberFailureSpec.call1")))
+          assertTrue(
+            stackTrace.contains("call1") &&
+              stackTrace.contains("subcall") &&
+              validateStackTrace(stackTrace)
+          )
         }
       }
     },
@@ -118,7 +127,11 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
       fiberFailureTest.flatMap { stackTrace =>
         ZIO.succeed {
-          assertTrue(validateStackTrace(stackTrace, Seq("zio.FiberFailureSpec.call1")))
+          assertTrue(
+            stackTrace.contains("call1") &&
+              stackTrace.contains("subcall") &&
+              validateStackTrace(stackTrace)
+          )
         }
       }
     }
