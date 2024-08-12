@@ -2,6 +2,7 @@ package zio
 
 import zio.test._
 import zio.test.Assertion._
+import zio.test.TestAspect._
 import java.io.{ByteArrayOutputStream, PrintStream}
 
 object FiberFailureSpec extends ZIOBaseSpec {
@@ -43,7 +44,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
     test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
       val exception    = new Exception("Test Exception")
       val fiberFailure = FiberFailure(Cause.fail(exception))
-      val stackTrace   = fiberFailure.getStackTrace
+      val stackTrace   = fiberFailure.getStackTrace.map(_.toString).mkString("\n")
 
       assertTrue(validateStackTrace(stackTrace))
 
