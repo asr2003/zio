@@ -39,28 +39,30 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       }
     },
-    test("FiberFailure toString should match cause.prettyPrint") {
+    test("FiberFailure toString should match expected string including stack trace") {
       val cause        = Cause.fail(new Exception("Test Exception"))
       val fiberFailure = FiberFailure(cause)
 
-      assert(fiberFailure.toString)(equalTo(cause.prettyPrint))
-    },
-    test("FiberFailure printStackTrace should correctly output the stack trace") {
-      val cause        = Cause.fail(new Exception("Test Exception"))
-      val fiberFailure = FiberFailure(cause)
+      val expectedString = fiberFailure.prettyPrint + "\n" + fiberFailure.stackTrace.mkString("\n")
 
-      val outputStream = new ByteArrayOutputStream()
-      val printStream  = new PrintStream(outputStream)
+      assertTrue(fiberFailure.toString.contains(expectedString))
+    }
+      test ("FiberFailure printStackTrace should correctly output the stack trace") {
+        val cause        = Cause.fail(new Exception("Test Exception"))
+        val fiberFailure = FiberFailure(cause)
 
-      fiberFailure.printStackTrace(printStream)
+        val outputStream = new ByteArrayOutputStream()
+        val printStream  = new PrintStream(outputStream)
 
-      val stackTraceOutput = new String(outputStream.toByteArray)
+        fiberFailure.printStackTrace(printStream)
 
-      assertTrue(
-        stackTraceOutput.contains("FiberFailure"),
-        stackTraceOutput.contains("Test Exception")
-      )
-    },
+        val stackTraceOutput = new String(outputStream.toByteArray)
+
+        assertTrue(
+          stackTraceOutput.contains("FiberFailure"),
+          stackTraceOutput.contains("Test Exception")
+        )
+      },
     test("FiberFailure captures the stack trace for ZIO.fail with String") {
       def subcall(): Unit =
         Unsafe.unsafe { implicit unsafe =>
