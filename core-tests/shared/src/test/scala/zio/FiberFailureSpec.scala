@@ -16,11 +16,28 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
   def spec = suite("FiberFailureSpec")(
     test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
-      val exception    = new Exception("Test Exception")
-      val fiberFailure = FiberFailure(Cause.fail(exception))
-      val stackTrace   = fiberFailure.getStackTrace.map(_.toString).mkString("\n")
+      def subcall(): Unit =
+        Unsafe.unsafe { implicit unsafe =>
+          Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
+        }
 
-      assertTrue(expectedStackTrace.forall(element => stackTrace.contains(element)))
+      val stackTrace = ZIO
+        .attempt(subcall())
+        .catchAll {
+          case fiberFailure: FiberFailure =>
+            val stackTraceStr = fiberFailure.getStackTrace.map(_.toString).mkString("\n")
+            ZIO.log(s"Captured Stack Trace:\n$stackTraceStr") *>
+              ZIO.succeed(stackTraceStr)
+          case other =>
+            ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
+        }
+        .asInstanceOf[ZIO[Any, Nothing, String]]
+
+      stackTrace.flatMap { trace =>
+        ZIO.succeed {
+          assertTrue(expectedStackTrace.forall(element => trace.contains(element)))
+        }
+      }
     },
     test("FiberFailure toString should match cause.prettyPrint") {
       val cause        = Cause.fail(new Exception("Test Exception"))
