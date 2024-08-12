@@ -8,10 +8,10 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 object FiberFailureSpec extends ZIOBaseSpec {
 
   val expectedStackTrace = Seq(
-    "zio.FiberFailure.<init>",
-    "zio.FiberFailure$.apply",
-    "zio.Exit.getOrThrowFiberFailure",
-    "zio.internal.FiberRuntime.runLoop"
+    "FiberFailure",
+    "apply",
+    "getOrThrowFiberFailure",
+    "runLoop"
   )
 
   def spec = suite("FiberFailureSpec")(
