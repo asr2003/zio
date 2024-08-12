@@ -34,12 +34,9 @@ object FiberFailureSpec extends ZIOBaseSpec {
     "zio.internal.ZScheduler$$anon$3.run"
   )
 
-  def validateStackTrace(stackTrace: String): Boolean = {
-    val actualStackTraceLines = stackTrace.split("\n")
-    expectedStackTrace.zip(actualStackTraceLines).forall { case (expected, actual) =>
-      actual.contains(expected)
-    }
-  }
+  def validateStackTrace(stackTrace: String): Boolean =
+    expectedStackTrace.forall(expected => stackTrace.contains(expected))
+
   def spec = suite("FiberFailureSpec")(
     test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
       val exception    = new Exception("Test Exception")
