@@ -22,7 +22,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
     test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
       val exception    = new Exception("Test Exception")
       val fiberFailure = FiberFailure(Cause.fail(exception))
-      val stackTrace   = fiberFailure.getStackTrace
+      val stackTrace   = fiberFailure.getStackTrace.map(_.toString).mkString("\n")
 
       assertTrue(validateStackTrace(stackTrace))
     },
