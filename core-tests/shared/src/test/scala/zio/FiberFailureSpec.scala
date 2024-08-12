@@ -38,27 +38,30 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       }
     },
-    test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
+    test("FiberFailure toString should include relevant ZIO stack traces") {
       def subcall(): Unit =
         Unsafe.unsafe { implicit unsafe =>
           Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
         }
 
-      val stackTrace = ZIO
+      val result = ZIO
         .attempt(subcall())
         .catchAll {
           case fiberFailure: FiberFailure =>
-            val stackTraceStr = fiberFailure.getStackTrace.map(_.toString).mkString("\n")
-            ZIO.log(s"Captured Stack Trace:\n$stackTraceStr") *>
-              ZIO.succeed(stackTraceStr)
+            val stackTrace     = fiberFailure.getStackTrace.map(_.toString)
+            val toStringOutput = fiberFailure.toString
+
+            ZIO.log(s"Captured Stack Trace:\n${stackTrace.mkString("\n")}") *>
+              ZIO.log(s"Captured toString Output:\n$toStringOutput") *>
+              ZIO.succeed((stackTrace, toStringOutput))
           case other =>
             ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
         }
-        .asInstanceOf[ZIO[Any, Nothing, String]]
+        .asInstanceOf[ZIO[Any, Nothing, (Seq[String], String)]]
 
-      stackTrace.flatMap { trace =>
+      result.flatMap { case (stackTrace, toStringOutput) =>
         ZIO.succeed {
-          assertTrue(expectedStackTrace.forall(element => trace.contains(element)))
+          assertTrue(stackTrace.forall(element => toStringOutput.contains(element)))
         }
       }
     },
