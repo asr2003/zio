@@ -31,8 +31,8 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
 
   override def getMessage: String = cause.unified.headOption.fold("<unknown>")(_.message)
 
-  override def getStackTrace(): Array[StackTraceElement] = {
-    val zioStackTrace  = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
+  def createUnifiedStackTrace(): Array[StackTraceElement] = {
+    val zioStackTrace  = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace.toJava).toArray
     val javaStackTrace = super.getStackTrace()
 
     // Combine both stack traces into a single array with minimal allocations
@@ -42,6 +42,8 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
 
     combinedStackTrace
   }
+
+  override def getStackTrace(): Array[StackTraceElement] = createUnifiedStackTrace()
 
   override def getCause(): Throwable =
     cause.find { case Cause.Die(throwable, _) => throwable }
@@ -54,8 +56,7 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     }
 
   override def toString =
-    cause.prettyPrint
-
+    cause.prettyPrint + "\n" + createUnifiedStackTrace().mkString("\n")
 }
 
 object FiberFailure {
