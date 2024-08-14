@@ -17,7 +17,7 @@
 package zio
 
 import zio.stacktracer.TracingImplicits.disableAutoTrace
-import java.lang.System.arraycopy
+import java.lang._
 
 /**
  * Represents a failure in a fiber. This could be caused by some non-
@@ -46,7 +46,7 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     combinedStackTrace
   }
 
-  override def getStackTrace(): Array[StackTraceElement] = createUnifiedStackTrace()
+  override def getStackTrace()(implicit trace: Trace): Array[StackTraceElement] = createUnifiedStackTrace()
 
   override def getCause(): Throwable =
     cause.find { case Cause.Die(throwable, _) => throwable }
@@ -58,7 +58,7 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
       cause.unified.iterator.drop(1).foreach(unified => addSuppressed(unified.toThrowable))
     }
 
-  override def toString =
+  override def toString(implicit trace: Trace): String =
     cause.prettyPrint + "\n" + createUnifiedStackTrace().mkString("\n")
 }
 
