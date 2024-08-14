@@ -1,6 +1,7 @@
 package zio
 
 import zio.test._
+import zio.test.Assertion._
 import zio.test.TestAspect._
 import java.io.{ByteArrayOutputStream, PrintStream}
 
@@ -38,32 +39,11 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       }
     },
-    test("FiberFailure toString should include relevant ZIO stack traces") {
-      def subcall(): Unit =
-        Unsafe.unsafe { implicit unsafe =>
-          Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
-        }
+    test("FiberFailure toString should match cause.prettyPrint") {
+      val cause        = Cause.fail(new Exception("Test Exception"))
+      val fiberFailure = FiberFailure(cause)
 
-      val result = ZIO
-        .attempt(subcall())
-        .catchAll {
-          case fiberFailure: FiberFailure =>
-            val stackTrace     = fiberFailure.getStackTrace.map(_.toString)
-            val toStringOutput = fiberFailure.toString
-
-            ZIO.log(s"Captured Stack Trace:\n${stackTrace.mkString("\n")}") *>
-              ZIO.log(s"Captured toString Output:\n$toStringOutput") *>
-              ZIO.succeed((stackTrace, toStringOutput))
-          case other =>
-            ZIO.succeed(s"Unexpected failure: ${other.getMessage}")
-        }
-        .asInstanceOf[ZIO[Any, Nothing, (Seq[String], String)]]
-
-      result.flatMap { case (stackTrace, toStringOutput) =>
-        ZIO.succeed {
-          assertTrue(stackTrace.forall(element => toStringOutput.contains(element)))
-        }
-      }
+      assert(fiberFailure.toString)(equalTo(cause.prettyPrint))
     },
     test("FiberFailure printStackTrace should correctly output the stack trace") {
       val cause        = Cause.fail(new Exception("Test Exception"))
@@ -80,25 +60,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
         stackTraceOutput.contains("FiberFailure"),
         stackTraceOutput.contains("Test Exception")
       )
-    },
-    test("FiberFailure toString should match cause.prettyPrint output") {
-      def subcall(): Unit =
-        Unsafe.unsafe { implicit unsafe =>
-          Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
-        }
-
-      val result = ZIO
-        .attempt(subcall())
-        .catchAll {
-          case fiberFailure: FiberFailure =>
-            val expectedOutput = fiberFailure.cause.prettyPrint
-            ZIO.succeed(assertTrue(fiberFailure.toString == expectedOutput))
-          case other =>
-            ZIO.succeed(assertTrue(false, s"Unexpected failure: ${other.getMessage}"))
-        }
-        .asInstanceOf[ZIO[Any, Nothing, TestResult]]
-
-      result
     },
     test("FiberFailure captures the stack trace for ZIO.fail with String") {
       def subcall(): Unit =
@@ -183,6 +144,48 @@ object FiberFailureSpec extends ZIOBaseSpec {
             stackTrace.contains("call1") &&
               stackTrace.contains("subcall") &&
               expectedStackTrace.forall(element => stackTrace.contains(element))
+          )
+        }
+      }
+    },
+    test("FiberFailure stack traces should be consistent across getStackTrace, toString, and printStackTrace") {
+      def subcall(): Unit =
+        Unsafe.unsafe { implicit unsafe =>
+          Runtime.default.unsafe.run(ZIO.fail("boom")).getOrThrowFiberFailure()
+        }
+
+      val result = ZIO
+        .attempt(subcall())
+        .catchAll {
+          case fiberFailure: FiberFailure =>
+            // Capture the output of getStackTrace
+            val stackTraceFromMethod = fiberFailure.getStackTrace.map(_.toString).mkString("\n")
+
+            // Capture the output of toString
+            val toStringOutput = fiberFailure.toString
+
+            // Capture the output of printStackTrace
+            val outputStream = new ByteArrayOutputStream()
+            val printStream  = new PrintStream(outputStream)
+            fiberFailure.printStackTrace(printStream)
+            val stackTraceFromPrint = new String(outputStream.toByteArray)
+
+            // Logging for review
+            ZIO.log(s"Captured Stack Trace from getStackTrace:\n$stackTraceFromMethod") *>
+              ZIO.log(s"Captured toString Output:\n$toStringOutput") *>
+              ZIO.log(s"Captured Stack Trace from printStackTrace:\n$stackTraceFromPrint") *>
+              ZIO.succeed((stackTraceFromMethod, toStringOutput, stackTraceFromPrint))
+          case other =>
+            ZIO.fail(new RuntimeException(s"Unexpected failure: ${other.getMessage}"))
+        }
+        .asInstanceOf[ZIO[Any, Nothing, (String, String, String)]]
+
+      result.flatMap { case (stackTraceFromMethod, toStringOutput, stackTraceFromPrint) =>
+        ZIO.succeed {
+          assertTrue(
+            toStringOutput.contains(stackTraceFromMethod),
+            stackTraceFromPrint.contains(stackTraceFromMethod),
+            toStringOutput == stackTraceFromPrint
           )
         }
       }
