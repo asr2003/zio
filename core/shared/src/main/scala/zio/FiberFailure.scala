@@ -31,12 +31,12 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
 
   override def getMessage: String = cause.unified.headOption.fold("<unknown>")(_.message)
 
-  def createUnifiedStackTrace(): Array[StackTraceElement] = {
-    val zioStackTrace = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
+  def createUnifiedStackTrace()(implicit trace: Trace): Array[StackTraceElement] = {
+    val zioStackTrace  = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
     val javaStackTrace = super.getStackTrace()
 
     // Use the existing StackTrace.fromJava to filter and create a unified stack trace
-    val filteredJavaStackTrace = StackTrace.fromJava(FiberId.None, javaStackTrace).toJava.toArray
+    val filteredJavaStackTrace = StackTrace.fromJava(FiberId.None, javaStackTrace)(trace).toJava.toArray
 
     // Combine both stack traces into a single array with minimal allocations
     val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + filteredJavaStackTrace.length)
