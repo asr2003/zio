@@ -31,12 +31,12 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
 
   override def getMessage: String = cause.unified.headOption.fold("<unknown>")(_.message)
 
-  def createUnifiedStackTrace()(implicit trace: Trace): Array[StackTraceElement] = {
+  override def getStackTrace(): Array[StackTraceElement] = {
     val zioStackTrace  = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
     val javaStackTrace = super.getStackTrace()
 
     // Use the existing StackTrace.fromJava to filter and create a unified stack trace
-    val filteredJavaStackTrace = StackTrace.fromJava(FiberId.None, javaStackTrace)(trace).toJava.toArray
+    val filteredJavaStackTrace = StackTrace.fromJava(FiberId.None, javaStackTrace).toJava.toArray
 
     // Combine both stack traces into a single array with minimal allocations
     val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + filteredJavaStackTrace.length)
@@ -45,8 +45,6 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
 
     combinedStackTrace
   }
-
-  override def getStackTrace()(implicit trace: Trace): Array[StackTraceElement] = createUnifiedStackTrace()
 
   override def getCause(): Throwable =
     cause.find { case Cause.Die(throwable, _) => throwable }
@@ -58,8 +56,8 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
       cause.unified.iterator.drop(1).foreach(unified => addSuppressed(unified.toThrowable))
     }
 
-  override def toString(implicit trace: Trace): String =
-    cause.prettyPrint + "\n" + createUnifiedStackTrace().mkString("\n")
+  override def toString =
+    cause.prettyPrint + "\n" + getStackTrace().mkString("\n")
 }
 
 object FiberFailure {
