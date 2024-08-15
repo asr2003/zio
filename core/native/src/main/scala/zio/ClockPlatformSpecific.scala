@@ -54,14 +54,14 @@ private object ClockPlatformSpecific {
   }
 
   object Timer {
-    def delay(duration: FiniteDuration): UIO[Unit] =
-      for {
-        promise <- Promise.make[Nothing, Unit]
-        _       <- ZIO.succeed(timeout(duration)(() => promise.succeed(()).unit))
-        _       <- promise.await
-      } yield ()
+    // def delay(duration: FiniteDuration)(implicit trace: Trace): UIO[Unit] =
+    //   for {
+    //     promise <- Promise.make[Nothing, Unit]
+    //     _       <- ZIO.succeed(timeout(duration)(() => promise.succeed(()).unit))
+    //     _       <- promise.await
+    //   } yield ()
 
-    def delayWithTrace(duration: FiniteDuration)(implicit trace: Trace): UIO[Unit] =
+    def delay(duration: FiniteDuration)(implicit trace: Trace): UIO[Unit] =
       for {
         promise <- Promise.make[Nothing, Unit]
         _       <- ZIO.succeed(timeoutWithTrace(duration)(() => promise.succeed(()).unit))
@@ -81,18 +81,7 @@ private object ClockPlatformSpecific {
 
     def timeout(duration: FiniteDuration)(callback: () => Unit)(implicit unsafe: Unsafe): Timer =
       timeoutWithTrace(duration, callback)(Trace.empty)
-
-    def timeout(duration: FiniteDuration)(callback: () => Unit)(implicit trace: Trace): Timer = {
-      val scheduledFuture = scheduler.schedule(
-        new Runnable {
-          override def run(): Unit = callback()
-        },
-        duration.toMillis,
-        TimeUnit.MILLISECONDS
-      )
-      new Timer(scheduledFuture)
-    }
-
+      
     def repeatWithTrace(duration: FiniteDuration)(callback: () => Unit)(implicit trace: Trace): Timer = {
       val scheduledFuture = scheduler.scheduleAtFixedRate(
         new Runnable {
@@ -104,6 +93,7 @@ private object ClockPlatformSpecific {
       )
       new Timer(scheduledFuture)
     }
+
     def repeat(duration: FiniteDuration)(callback: () => Unit)(implicit unsafe: Unsafe): Timer =
       repeatWithTrace(duration, callback)(Trace.empty)
   }
