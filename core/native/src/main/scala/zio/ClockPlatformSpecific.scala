@@ -80,8 +80,8 @@ private object ClockPlatformSpecific {
     }
 
     def timeout(duration: FiniteDuration)(callback: () => Unit)(implicit unsafe: Unsafe): Timer =
-      timeoutWithTrace(duration, callback)(Trace.empty)
-      
+      timeoutWithTrace(duration)(callback)(Trace.empty)
+
     def repeatWithTrace(duration: FiniteDuration)(callback: () => Unit)(implicit trace: Trace): Timer = {
       val scheduledFuture = scheduler.scheduleAtFixedRate(
         new Runnable {
@@ -95,6 +95,6 @@ private object ClockPlatformSpecific {
     }
 
     def repeat(duration: FiniteDuration)(callback: () => Unit)(implicit unsafe: Unsafe): Timer =
-      repeatWithTrace(duration, callback)(Trace.empty)
+      repeatWithTrace(duration)(callback)(Trace.empty)
   }
 }
