@@ -17,6 +17,7 @@
 package zio
 
 import zio.stacktracer.TracingImplicits.disableAutoTrace
+import java.lang.System.arraycopy
 
 /**
  * Represents a failure in a fiber. This could be caused by some non-
@@ -26,20 +27,20 @@ import zio.stacktracer.TracingImplicits.disableAutoTrace
  * This class is used to wrap ZIO failures into something that can be thrown, to
  * better integrate with Scala exception handling.
  */
-final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, false) {
-
-  private var javaStackTrace: Array[StackTraceElement] = Thread.currentThread().getStackTrace
-
-  def this(cause: Cause[Any], javaStackTrace: Array[StackTraceElement]) = {
-    this(cause)
-    this.javaStackTrace = javaStackTrace
-  }
+final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, true) {
 
   override def getMessage: String = cause.unified.headOption.fold("<unknown>")(_.message)
 
   override def getStackTrace(): Array[StackTraceElement] = {
-    val zioStackTrace = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
-    zioStackTrace ++ javaStackTrace
+    val zioStackTrace = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toJava.toArray
+    val javaStackTrace = super.getStackTrace()
+
+    // Combine both stack traces into a single array with minimal allocations
+    val combinedStackTrace = new Array[StackTraceElement](javaStackTrace.length + zioStackTrace.length)
+    arraycopy(zioStackTrace, 0, combinedStackTrace, 0, zioStackTrace.length)
+    arraycopy(javaStackTrace, 0, combinedStackTrace, zioStackTrace.length, javaStackTrace.length)
+
+    combinedStackTrace
   }
 
   override def getCause(): Throwable =
@@ -53,13 +54,9 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     }
 
   override def toString =
-    cause.prettyPrint
-
+    cause.prettyPrint + "\n" + getStackTrace().mkString("\n")
 }
 
 object FiberFailure {
   def apply(cause: Cause[Any]): FiberFailure = new FiberFailure(cause)
-
-  def apply(cause: Cause[Any], javaStackTrace: Array[StackTraceElement]): FiberFailure =
-    new FiberFailure(cause, javaStackTrace)
 }
