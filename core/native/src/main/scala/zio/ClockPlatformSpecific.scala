@@ -104,7 +104,6 @@ private object ClockPlatformSpecific {
       )
       new Timer(scheduledFuture)
     }
-
     def repeat(duration: FiniteDuration)(callback: () => Unit)(implicit unsafe: Unsafe): Timer =
       repeatWithTrace(duration, callback)(Trace.empty)
   }
