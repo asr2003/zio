@@ -24,7 +24,6 @@ import scala.concurrent.duration.FiniteDuration
 
 private[zio] trait ClockPlatformSpecific {
   import ClockPlatformSpecific.Timer
-  import ClockPlatformSpecific.Timer
   private[zio] val globalScheduler = new Scheduler {
     import Scheduler.CancelToken
 
@@ -38,9 +37,12 @@ private[zio] trait ClockPlatformSpecific {
           ConstTrue
         case zio.Duration.Infinity =>
           ConstFalse
+        case zio.Duration.Finite(nanos) =>
           var completed = false
+
           val handle = Timer.timeout(FiniteDuration(nanos, TimeUnit.NANOSECONDS)) { () =>
             completed = true
+
             task.run()
           }
           () => {
