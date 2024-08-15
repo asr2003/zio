@@ -36,10 +36,17 @@ private[zio] trait ClockPlatformSpecific {
         case zio.Duration.Zero =>
           task.run()
           ConstTrue
-        case zio.Duration.Infinity => ConstFalse
-        case zio.Duration.Finite(nanos) =>
-          val future = ClockPlatformSpecific.scheduler.schedule(task, nanos, TimeUnit.NANOSECONDS)
-          () => future.cancel(true)
+        case zio.Duration.Infinity =>
+          ConstFalse
+          var completed = false
+          val handle = Timer.timeout(FiniteDuration(nanos, TimeUnit.NANOSECONDS)) { () =>
+            completed = true
+            task.run()
+          }
+          () => {
+            handle.clear()
+            !completed
+          }
       }
   }
 }
@@ -68,6 +75,7 @@ private object ClockPlatformSpecific {
         _       <- promise.await
       } yield ()
 
+    // New method added with Trace parameter for new functionality
     private def timeoutWithTrace(duration: FiniteDuration)(callback: () => Unit)(implicit trace: Trace): Timer = {
       val scheduledFuture = scheduler.schedule(
         new Runnable {
@@ -79,6 +87,7 @@ private object ClockPlatformSpecific {
       new Timer(scheduledFuture)
     }
 
+    // Original method retained for backward compatibility
     def timeout(duration: FiniteDuration)(callback: () => Unit)(implicit unsafe: Unsafe): Timer =
       timeoutWithTrace(duration)(callback)(Trace.empty)
 
