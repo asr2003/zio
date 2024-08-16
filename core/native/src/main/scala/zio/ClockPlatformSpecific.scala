@@ -24,7 +24,6 @@ import scala.concurrent.duration.FiniteDuration
 
 private[zio] trait ClockPlatformSpecific {
   import ClockPlatformSpecific.Timer
-  import ClockPlatformSpecific.Timer
   private[zio] val globalScheduler = new Scheduler {
     import Scheduler.CancelToken
 
@@ -36,17 +35,27 @@ private[zio] trait ClockPlatformSpecific {
         case zio.Duration.Zero =>
           task.run()
           ConstTrue
-        case zio.Duration.Infinity => ConstFalse
+        case zio.Duration.Infinity =>
+          ConstFalse
         case zio.Duration.Finite(nanos) =>
-          val future = ClockPlatformSpecific.scheduler.schedule(task, nanos, TimeUnit.NANOSECONDS)
-          () => future.cancel(true)
+          var completed = false
+
+          val handle = Timer.timeout(FiniteDuration(nanos, TimeUnit.NANOSECONDS)) { () =>
+            completed = true
+
+            task.run()
+          }
+          () => {
+            handle.clear()
+            !completed
+          }
       }
   }
 }
 
 private object ClockPlatformSpecific {
   // Multi-threaded scheduler using ScheduledExecutorService
-  val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(2)
+  val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(4)
 
   final class Timer private (private val scheduledFuture: java.util.concurrent.ScheduledFuture[_]) extends AnyVal {
     def clear(): Unit =
@@ -54,14 +63,16 @@ private object ClockPlatformSpecific {
   }
 
   object Timer {
+    
     def delay(duration: FiniteDuration)(implicit trace: Trace): UIO[Unit] =
       for {
         promise <- Promise.make[Nothing, Unit]
-        _       <- ZIO.succeed(timeout(duration)(() => promise.succeed(()).unit))
+        _       <- ZIO.succeed(timeoutWithTrace(duration)(() => promise.succeed(()).unit))
         _       <- promise.await
       } yield ()
 
-    def timeout(duration: FiniteDuration)(callback: () => Unit)(implicit trace: Trace): Timer = {
+    // New method added with Trace parameter for new functionality
+    private def timeoutWithTrace(duration: FiniteDuration)(callback: () => Unit)(implicit trace: Trace): Timer = {
       val scheduledFuture = scheduler.schedule(
         new Runnable {
           override def run(): Unit = callback()
@@ -72,7 +83,11 @@ private object ClockPlatformSpecific {
       new Timer(scheduledFuture)
     }
 
-    def repeat(duration: FiniteDuration)(callback: () => Unit)(implicit trace: Trace): Timer = {
+    // Original method retained for backward compatibility
+    def timeout(duration: FiniteDuration)(callback: () => Unit)(implicit unsafe: Unsafe): Timer =
+      timeoutWithTrace(duration)(callback)(Trace.empty)
+
+    def repeatWithTrace(duration: FiniteDuration)(callback: () => Unit)(implicit trace: Trace): Timer = {
       val scheduledFuture = scheduler.scheduleAtFixedRate(
         new Runnable {
           override def run(): Unit = callback()
@@ -83,5 +98,8 @@ private object ClockPlatformSpecific {
       )
       new Timer(scheduledFuture)
     }
+
+    def repeat(duration: FiniteDuration)(callback: () => Unit)(implicit unsafe: Unsafe): Timer =
+      repeatWithTrace(duration)(callback)(Trace.empty)
   }
 }
