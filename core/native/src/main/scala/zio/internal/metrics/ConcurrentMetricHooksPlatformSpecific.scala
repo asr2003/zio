@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 private[zio] class ConcurrentMetricHooksPlatformSpecific extends ConcurrentMetricHooks {
   def counter(key: MetricKey.Counter): MetricHook.Counter = {
-    val sum = new AtomicReference[Double](startAt)
+    val sum = new AtomicReference[Double](0.0)
 
     MetricHook(
       v => sum.updateAndGet(current => current + v),
@@ -66,7 +66,6 @@ private[zio] class ConcurrentMetricHooksPlatformSpecific extends ConcurrentMetri
         }
       }
       values.getAndIncrement(from)
-      count.increment()
       count.incrementAndGet()
       sum.updateAndGet(current => current + value)
       min.updateAndGet(current => Math.min(current, value))
@@ -177,6 +176,7 @@ private[zio] class ConcurrentMetricHooksPlatformSpecific extends ConcurrentMetri
         slot = values.get(word)
       }
       slot.incrementAndGet()
+      ()
     }
 
     def snapshot(): Map[String, Long] = {
