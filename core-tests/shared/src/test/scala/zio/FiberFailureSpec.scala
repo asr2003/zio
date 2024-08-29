@@ -158,7 +158,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           case fiberFailure: FiberFailure =>
             val stackTraceFromGetStackTrace = fiberFailure.getStackTrace.mkString("\n")
             val stackTraceFromToString      = fiberFailure.toString
-            val stackTraceFromPrintStream = {
+            val stackTraceFromPrint = {
               val baos = new ByteArrayOutputStream()
               try {
                 fiberFailure.printStackTrace(new PrintStream(baos))
@@ -169,10 +169,10 @@ object FiberFailureSpec extends ZIOBaseSpec {
             }
 
             // Logging for review
-            ZIO.log(s"Captured Stack Trace from getStackTrace:\n$stackTraceFromMethod") *>
-              ZIO.log(s"Captured toString Output:\n$toStringOutput") *>
+            ZIO.log(s"Captured Stack Trace from getStackTrace:\n$stackTraceFromGetStackTrace") *>
+              ZIO.log(s"Captured toString Output:\n$stackTraceFromToString") *>
               ZIO.log(s"Captured Stack Trace from printStackTrace:\n$stackTraceFromPrint") *>
-              ZIO.succeed((stackTraceFromMethod, toStringOutput, stackTraceFromPrint))
+              ZIO.succeed((stackTraceFromGetStackTrace, stackTraceFromToString, stackTraceFromPrint))
           case other =>
             ZIO.fail(new RuntimeException(s"Unexpected failure: ${other.getMessage}"))
         }
@@ -181,12 +181,12 @@ object FiberFailureSpec extends ZIOBaseSpec {
       // Expected stack trace format (this is an example; will adjust it according to output format)
       val expectedStackTrace = stackTraceFromGetStackTrace
 
-      result.flatMap { case (stackTraceFromMethod, toStringOutput, stackTraceFromPrint) =>
+      result.flatMap { case (stackTraceFromGetStackTrace, stackTraceFromToString, stackTraceFromPrint) =>
         ZIO.succeed {
           assertTrue(
             stackTraceFromGetStackTrace == expectedStackTrace,
             stackTraceFromToString == expectedStackTrace,
-            stackTraceFromPrintStream == expectedStackTrace
+            stackTraceFromPrint == expectedStackTrace
           )
         }
       }
