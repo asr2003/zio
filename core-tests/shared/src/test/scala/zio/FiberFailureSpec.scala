@@ -7,7 +7,7 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 
 object FiberFailureSpec extends ZIOBaseSpec {
 
-  val expectedStackTrace = Seq(
+  val expectedStackTraceElements = Seq(
     "FiberFailure",
     "apply",
     "getOrThrowFiberFailure",
@@ -34,7 +34,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
       stackTrace.flatMap { trace =>
         ZIO.succeed {
-          assertTrue(expectedStackTrace.forall(element => trace.contains(element)))
+          assertTrue(expectedStackTraceElements.forall(element => trace.contains(element)))
         }
       }
     },
@@ -84,7 +84,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           assertTrue(
             stackTrace.contains("call1") &&
               stackTrace.contains("subcall") &&
-              expectedStackTrace.forall(element => stackTrace.contains(element))
+              expectedStackTraceElements.forall(element => stackTrace.contains(element))
           )
         }
       }
@@ -112,7 +112,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           assertTrue(
             stackTrace.contains("call1") &&
               stackTrace.contains("subcall") &&
-              expectedStackTrace.forall(element => stackTrace.contains(element))
+              expectedStackTraceElements.forall(element => stackTrace.contains(element))
           )
         }
       }
@@ -140,7 +140,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           assertTrue(
             stackTrace.contains("call1") &&
               stackTrace.contains("subcall") &&
-              expectedStackTrace.forall(element => stackTrace.contains(element))
+              expectedStackTraceElements.forall(element => stackTrace.contains(element))
           )
         }
       }
@@ -178,10 +178,10 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
         .asInstanceOf[ZIO[Any, Nothing, (String, String, String)]]
 
-      // Expected stack trace format (this is an example; will adjust it according to output format)
-      val expectedStackTrace = stackTraceFromGetStackTrace
-
       result.flatMap { case (stackTraceFromGetStackTrace, stackTraceFromToString, stackTraceFromPrint) =>
+        // Expected stack trace format (this is an example; will adjust it according to output format)
+        val expectedStackTrace = stackTraceFromGetStackTrace
+
         ZIO.succeed {
           assertTrue(
             stackTraceFromGetStackTrace == expectedStackTrace,
