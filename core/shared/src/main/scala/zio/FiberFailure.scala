@@ -30,7 +30,7 @@ import java.lang.System.arraycopy
 final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, true) {
   override def getMessage: String = cause.unified.headOption.fold("<unknown>")(_.message)
 
-  override def getStackTrace(): Array[StackTraceElement] = {
+  override def getStackTrace(implicit trace: Trace): Array[StackTraceElement] = {
     // Filter Java stack trace to remove internal ZIO methods
     val javaStackTrace = StackTrace.fromJava(FiberId.None, super.getStackTrace()).toJava.toArray
 
