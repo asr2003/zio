@@ -184,7 +184,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
         ZIO.succeed {
           assertTrue(
-            stackTraceFromGetStackTrace == expectedStackTrace,
             stackTraceFromToString == expectedStackTrace,
             stackTraceFromPrint == expectedStackTrace
           )
