@@ -69,6 +69,5 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     s.println(this.toString)
 
   override def printStackTrace(): Unit =
-    System.err.println(this.toString)
-
+    java.lang.System.err.println(this.toString)
 }
