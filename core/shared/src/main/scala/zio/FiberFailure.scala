@@ -55,10 +55,11 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
       cause.unified.iterator.drop(1).foreach(unified => addSuppressed(unified.toThrowable))
     }
 
-  override def toString: String =
+  override def toString: String = {
     val stackTraceString = getStackTrace().mkString("\n")
     s"${cause.prettyPrint}\nStack trace:\n$stackTraceString"
-
+  }
+  
   override def printStackTrace(s: PrintStream): Unit = {
     s.println(this.toString)
 
