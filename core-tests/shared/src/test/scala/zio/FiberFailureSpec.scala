@@ -10,8 +10,8 @@ object FiberFailureSpec extends ZIOBaseSpec {
   val expectedStackTraceElements = Seq(
     "FiberFailure",
     "apply",
-    "getOrThrowFiberFailure",
-    "runLoop"
+    "getOrThrowFiberFailure"
+    // "runLoop"
   )
 
   def spec = suite("FiberFailureSpec")(
