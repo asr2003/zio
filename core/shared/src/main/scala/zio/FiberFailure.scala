@@ -17,6 +17,7 @@
 package zio
 
 import zio.stacktracer.TracingImplicits.disableAutoTrace
+import java.lang.System.arraycopy
 
 /**
  * Represents a failure in a fiber. This could be caused by some non-
@@ -26,11 +27,21 @@ import zio.stacktracer.TracingImplicits.disableAutoTrace
  * This class is used to wrap ZIO failures into something that can be thrown, to
  * better integrate with Scala exception handling.
  */
-final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, false) {
+final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, true) {
   override def getMessage: String = cause.unified.headOption.fold("<unknown>")(_.message)
 
-  override def getStackTrace(): Array[StackTraceElement] =
-    cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
+  override def getStackTrace(): Array[StackTraceElement] = {
+    val zioStackTrace = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace.toJava).toArray
+
+    // Filter Java stack trace to remove internal ZIO methods
+    val javaStackTrace = StackTrace.fromJava(FiberId.None, super.getStackTrace()).toJava.toArray
+
+    val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + javaStackTrace.length)
+    zioStackTrace.copyToArray(combinedStackTrace, 0)
+    javaStackTrace.copyToArray(combinedStackTrace, zioStackTrace.length)
+
+    combinedStackTrace
+  }
 
   override def getCause(): Throwable =
     cause.find { case Cause.Die(throwable, _) => throwable }
