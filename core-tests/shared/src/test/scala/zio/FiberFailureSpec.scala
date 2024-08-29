@@ -182,13 +182,14 @@ object FiberFailureSpec extends ZIOBaseSpec {
       val expectedStackTrace = stackTraceFromGetStackTrace
 
       result.flatMap { case (stackTraceFromMethod, toStringOutput, stackTraceFromPrint) =>
-        ZIO.succeed{
-            assertTrue(
-                stackTraceFromGetStackTrace == expectedStackTrace,
-                stackTraceFromToString == expectedStackTrace,
-                stackTraceFromPrintStream == expectedStackTrace
-            )
+        ZIO.succeed {
+          assertTrue(
+            stackTraceFromGetStackTrace == expectedStackTrace,
+            stackTraceFromToString == expectedStackTrace,
+            stackTraceFromPrintStream == expectedStackTrace
+          )
         }
+      }
     }
   ) @@ exceptJS
 }
