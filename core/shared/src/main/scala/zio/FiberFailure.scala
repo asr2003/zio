@@ -17,6 +17,7 @@
 package zio
 
 import zio.stacktracer.TracingImplicits.disableAutoTrace
+import java.io.PrintStream
 import java.lang.System.arraycopy
 
 /**
@@ -59,9 +60,8 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     val stackTraceString = getStackTrace().mkString("\n")
     s"${cause.prettyPrint}\nStack trace:\n$stackTraceString"
   }
-  
-  override def printStackTrace(s: PrintStream): Unit = {
+
+  override def printStackTrace(s: PrintStream): Unit =
     s.println(this.toString)
 
-  }
 }
