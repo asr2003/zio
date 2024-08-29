@@ -180,24 +180,24 @@ object FiberFailureSpec extends ZIOBaseSpec {
 
       result.flatMap { case (stackTraceFromGetStackTrace, stackTraceFromToString, stackTraceFromPrint) =>
         // Expected stack trace format (this is an example; will adjust it according to output format)
-        val expectedStackTrace =
-          """Exception in thread "zio-fiber" java.lang.String: boom
-            |	at zio.FiberFailureSpec.spec.subcall(FiberFailureSpec.scala:152)
-            |Stack trace:
-            |	at zio.FiberFailureSpec.spec.subcall(FiberFailureSpec.scala:152)
-            |	at zio.Exit.$anonfun$getOrThrowFiberFailure$1(ZIO.scala:6469)
-            |	at zio.Exit.getOrElse(ZIO.scala:6462)
-            |	at zio.Exit.getOrElse$(ZIO.scala:6460)
-            |	at zio.Exit$Failure.getOrElse(ZIO.scala:6665)
-            |	at zio.Exit.getOrThrowFiberFailure(ZIO.scala:6469)
-            |	at zio.Exit.getOrThrowFiberFailure$(ZIO.scala:6468)
-            |	at zio.Exit$Failure.getOrThrowFiberFailure(ZIO.scala:6665)
-            |	at zio.FiberFailureSpec$.$anonfun$spec$64(FiberFailureSpec.scala:152)
-            |	at zio.Unsafe$.unsafe(Unsafe.scala:37)
-            |	at zio.FiberFailureSpec$.subcall$5(FiberFailureSpec.scala:151)
-            |	at zio.FiberFailureSpec$.$anonfun$spec$66(FiberFailureSpec.scala:156)
-            |	at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.scala:18)
-            |	at zio.ZIOCompanionVersionSpecific.$anonfun$attempt$1(ZIOCompanionVersionSpecific.scala:100)""".stripMargin
+        // val expectedStackTrace =
+        //   """Exception in thread "zio-fiber" java.lang.String: boom
+        //     |	at zio.FiberFailureSpec.spec.subcall(FiberFailureSpec.scala:152)
+        //     |Stack trace:
+        //     |	at zio.FiberFailureSpec.spec.subcall(FiberFailureSpec.scala:152)
+        //     |	at zio.Exit.$anonfun$getOrThrowFiberFailure$1(ZIO.scala:6469)
+        //     |	at zio.Exit.getOrElse(ZIO.scala:6462)
+        //     |	at zio.Exit.getOrElse$(ZIO.scala:6460)
+        //     |	at zio.Exit$Failure.getOrElse(ZIO.scala:6665)
+        //     |	at zio.Exit.getOrThrowFiberFailure(ZIO.scala:6469)
+        //     |	at zio.Exit.getOrThrowFiberFailure$(ZIO.scala:6468)
+        //     |	at zio.Exit$Failure.getOrThrowFiberFailure(ZIO.scala:6665)
+        //     |	at zio.FiberFailureSpec$.$anonfun$spec$64(FiberFailureSpec.scala:152)
+        //     |	at zio.Unsafe$.unsafe(Unsafe.scala:37)
+        //     |	at zio.FiberFailureSpec$.subcall$5(FiberFailureSpec.scala:151)
+        //     |	at zio.FiberFailureSpec$.$anonfun$spec$66(FiberFailureSpec.scala:156)
+        //     |	at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.scala:18)
+        //     |	at zio.ZIOCompanionVersionSpecific.$anonfun$attempt$1(ZIOCompanionVersionSpecific.scala:100)""".stripMargin
 
         ZIO.succeed {
           assertTrue(
