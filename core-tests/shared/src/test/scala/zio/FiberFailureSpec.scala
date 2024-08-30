@@ -16,9 +16,7 @@
 
 package zio
 
-import zio.stacktracer.TracingImplicits.disableAutoTrace
 import java.io.{PrintStream, PrintWriter}
-import java.lang.System.arraycopy
 
 /**
  * Represents a failure in a fiber. This could be caused by some non-
