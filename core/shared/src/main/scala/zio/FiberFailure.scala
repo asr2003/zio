@@ -57,9 +57,10 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     }
 
   override def toString: String = {
+    val threadName       = Thread.currentThread.getName
+    val causeString      = cause.prettyPrint
     val stackTraceString = getStackTrace().mkString("\n\tat ", "\n\tat ", "")
-    s"""${cause.prettyPrint}
-       |Stack trace:$stackTraceString""".stripMargin
+    s"""Exception in thread "$threadName" $causeString\nStack trace:$stackTraceString"""
   }
 
   override def printStackTrace(s: PrintStream): Unit =
