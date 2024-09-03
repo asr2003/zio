@@ -37,12 +37,15 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     // Filter Java stack trace to remove internal ZIO methods
     val javaStackTrace = StackTrace.fromJava(FiberId.None, super.getStackTrace()).toJava.toArray
 
-    val zioStackTrace = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
+    val zioStackTrace = cause.unified.headOption
+      .fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace)
+      .toArray
+      .filterNot(isInternalZioMethod)
 
     val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + javaStackTrace.length)
     arraycopy(zioStackTrace, 0, combinedStackTrace, 0, zioStackTrace.length)
     arraycopy(
-      javaStackTrace.filterNot(isInternalZioMethod),
+      javaStackTrace,
       0,
       combinedStackTrace,
       zioStackTrace.length,
@@ -70,7 +73,7 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
 
   override def toString: String = {
     val stackTraceString = getStackTrace().mkString("\n\tat ", "\n\tat ", "")
-    cause.prettyPrint
+    s"${cause.prettyPrint}\nStack trace:$stackTraceString"
   }
 
   override def printStackTrace(s: PrintStream): Unit =
