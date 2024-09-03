@@ -18,9 +18,13 @@ object FiberFailureSpec extends ZIOBaseSpec {
     stackTrace
       .split("\n")
       .map { line =>
-        line.trim
-          .replaceAll("""\([^)]*\)""", "")                       // Remove line numbers and file names
-          .replaceAll("""^\s*Exception in thread \".*\" """, "") // Remove thread names
+        // If the line contains the exception message, leave it as is
+        if (line.startsWith("java.lang.String:")) line.trim
+        else if (line.trim.startsWith("Stack trace:")) line.trim // Preserve the "Stack trace:" label
+        else
+          line.trim
+            .replaceAll("""\([^)]*\)""", "")                       // Remove line numbers and file names
+            .replaceAll("""^\s*Exception in thread \".*\" """, "") // Remove thread names
       }
       .filterNot(_.isEmpty) // Remove any empty lines
       .mkString("\n")
