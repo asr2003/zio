@@ -18,14 +18,15 @@ object FiberFailureSpec extends ZIOBaseSpec {
     stackTrace
       .split("\n")
       .map { line =>
-        // If the line contains the exception message, leave it as is
-        if (line.startsWith("java.lang.String:")) line.trim
-        else
-          line.trim
-            .replaceAll("""\([^)]*\)""", "")                       // Remove line numbers and file names
-            .replaceAll("""^\s*Exception in thread \".*\" """, "") // Remove thread names
+        line.trim
+          // Remove line numbers and file names but keep method names and class names
+          .replaceAll("""\([^)]*\)""", "")
+          // Remove thread names
+          .replaceAll("""^\s*Exception in thread \".*\" """, "")
+          // Remove redundant white spaces
+          .replaceAll("""\s+""", " ")
       }
-      .filterNot(_.isEmpty) // Remove any empty lines
+      .filterNot(_.isEmpty)
       .mkString("\n")
 
   def spec = suite("FiberFailureSpec")(
