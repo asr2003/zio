@@ -20,7 +20,6 @@ object FiberFailureSpec extends ZIOBaseSpec {
       .map { line =>
         // If the line contains the exception message, leave it as is
         if (line.startsWith("java.lang.String:")) line.trim
-        else if (line.trim.startsWith("Stack trace:")) line.trim // Preserve the "Stack trace:" label
         else
           line.trim
             .replaceAll("""\([^)]*\)""", "")                       // Remove line numbers and file names
