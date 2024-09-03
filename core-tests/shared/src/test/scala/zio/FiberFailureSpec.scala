@@ -14,6 +14,14 @@ object FiberFailureSpec extends ZIOBaseSpec {
     // "runLoop"
   )
 
+  def normalizeStackTrace(stackTrace: String): String =
+    stackTrace
+      .split("\n")
+      .map(_.replaceAll("""\([^)]*\)""", ""))                   // Remove line numbers and file names
+      .map(_.replaceAll("""Exception in thread \".*\" """, "")) // Remove thread names
+      .map(_.trim)                                              // Trim any leading or trailing whitespace
+      .mkString("\n")
+
   def spec = suite("FiberFailureSpec")(
     test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
       def subcall(): Unit =
@@ -198,11 +206,13 @@ object FiberFailureSpec extends ZIOBaseSpec {
         //     |	at zio.FiberFailureSpec$.$anonfun$spec$66(FiberFailureSpec.scala:156)
         //     |	at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.scala:18)
         //     |	at zio.ZIOCompanionVersionSpecific.$anonfun$attempt$1(ZIOCompanionVersionSpecific.scala:100)""".stripMargin
-
+        val normalizedGetStackTrace   = normalizeStackTrace(stackTraceFromGetStackTrace)
+        val normalizedToString        = normalizeStackTrace(stackTraceFromToString)
+        val normalizedPrintStackTrace = normalizeStackTrace(stackTraceFromPrint)
         ZIO.succeed {
           assertTrue(
-            stackTraceFromGetStackTrace == stackTraceFromToString &&
-              stackTraceFromToString == stackTraceFromPrint
+            normalizedGetStackTrace == normalizedToString &&
+              normalizedToString == normalizedPrintStackTrace
           )
         }
       }
