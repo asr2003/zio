@@ -19,8 +19,8 @@ object FiberFailureSpec extends ZIOBaseSpec {
       .split("\n")
       .map { line =>
         line.trim
-          .replaceAll("""\([^)]*\)""", "")                   // Remove line numbers and file names
-          .replaceAll("""Exception in thread \".*\" """, "") // Remove thread names
+          .replaceAll("""\([^)]*\)""", "")                       // Remove line numbers and file names
+          .replaceAll("""^\s*Exception in thread \".*\" """, "") // Remove thread names
       }
       .filterNot(_.isEmpty) // Remove any empty lines
       .mkString("\n")
