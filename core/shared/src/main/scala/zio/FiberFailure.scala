@@ -40,11 +40,23 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     val zioStackTrace = cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
 
     val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + javaStackTrace.length)
-    zioStackTrace.copyToArray(combinedStackTrace, 0)
-    javaStackTrace.copyToArray(combinedStackTrace, zioStackTrace.length)
+    arraycopy(zioStackTrace, 0, combinedStackTrace, 0, zioStackTrace.length)
+    arraycopy(
+      javaStackTrace.filterNot(isInternalZioMethod),
+      0,
+      combinedStackTrace,
+      zioStackTrace.length,
+      javaStackTrace.length
+    )
 
     combinedStackTrace
   }
+
+  private def isInternalZioMethod(element: StackTraceElement): Boolean =
+    // filtering logic to exclude internal ZIO methods
+    element.getClassName.startsWith("zio.internal") ||
+      element.getClassName.startsWith("zio.Unsafe") ||
+      element.getClassName.startsWith("zio.FiberRuntime")
 
   override def getCause(): Throwable =
     cause.find { case Cause.Die(throwable, _) => throwable }
@@ -56,12 +68,10 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
       cause.unified.iterator.drop(1).foreach(unified => addSuppressed(unified.toThrowable))
     }
 
-override def toString: String = {
-  val stackTraceString = getStackTrace().mkString("\n\tat ", "\n\tat ", "")
-  s"${cause.prettyPrint}\nStack trace:$stackTraceString"
-}
-
-
+  override def toString: String = {
+    val stackTraceString = getStackTrace().mkString("\n\tat ", "\n\tat ", "")
+    cause.prettyPrint
+  }
 
   override def printStackTrace(s: PrintStream): Unit =
     s.println(this.toString)
