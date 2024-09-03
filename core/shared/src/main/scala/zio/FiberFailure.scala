@@ -35,12 +35,12 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     implicit val trace: Trace = Trace.empty
 
     // Filter Java stack trace to remove internal ZIO methods
-    val javaStackTrace = StackTrace.fromJava(FiberId.None, super.getStackTrace()).toJava.toArray
+    val javaStackTrace =
+      StackTrace.fromJava(FiberId.None, super.getStackTrace()).toJava.toArray.filterNot(isInternalZioMethod)
 
     val zioStackTrace = cause.unified.headOption
       .fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace)
       .toArray
-      .filterNot(isInternalZioMethod)
 
     val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + javaStackTrace.length)
     arraycopy(zioStackTrace, 0, combinedStackTrace, 0, zioStackTrace.length)
