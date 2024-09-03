@@ -17,10 +17,12 @@ object FiberFailureSpec extends ZIOBaseSpec {
   def normalizeStackTrace(stackTrace: String): String =
     stackTrace
       .split("\n")
-      .map(_.replaceAll("""\([^)]*\)""", ""))                   // Remove line numbers and file names
-      .map(_.replaceAll("""Exception in thread \".*\" """, "")) // Remove thread names
-      .map(_.trim)                                              // Trim any leading or trailing whitespace
-      .filterNot(_.isEmpty)                                     // Remove any empty lines
+      .map { line =>
+        line.trim
+          .replaceAll("""\([^)]*\)""", "")                   // Remove line numbers and file names
+          .replaceAll("""Exception in thread \".*\" """, "") // Remove thread names
+      }
+      .filterNot(_.isEmpty) // Remove any empty lines
       .mkString("\n")
 
   def spec = suite("FiberFailureSpec")(
