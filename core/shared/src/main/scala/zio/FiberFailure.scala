@@ -72,7 +72,9 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
     }
 
   override def toString: String = {
-    val message          = cause.unified.headOption.map(_.message).getOrElse("<unknown>")
+    // Fetch the class name and message properly from the unified cause
+    val unifiedCause     = cause.unified.headOption
+    val message          = unifiedCause.map(c => s"${c.className}: ${c.message}").getOrElse("<unknown>")
     val stackTraceString = getStackTrace().mkString("\n\tat ", "\n\tat ", "")
     s"$message\n$stackTraceString"
   }
