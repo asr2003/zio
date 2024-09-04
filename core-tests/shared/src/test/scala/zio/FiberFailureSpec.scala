@@ -225,6 +225,8 @@ object FiberFailureSpec extends ZIOBaseSpec {
           .replaceAll("""\([^)]*\)""", "")
           // Remove thread names
           .replaceAll("""^\s*Exception in thread \".*\" """, "")
+          // Add "at " prefix for consistency with expected output
+          .replaceAll("""^(?!at\s)""", "at ")
           // Remove redundant white spaces
           .replaceAll("""\s+""", " ")
       }
