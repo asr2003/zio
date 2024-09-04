@@ -220,20 +220,56 @@ object FiberFailureSpec extends ZIOBaseSpec {
     }
   ) @@ exceptJS
 
-  // Helper method for normalizing stack traces
+  /**
+   * Normalizes a stack trace string by cleaning up individual lines.
+   *   - Removes file names, line numbers, and thread information.
+   *   - Adds the "at " prefix where missing.
+   *   - Filters out empty and duplicate lines.
+   *
+   * @param stackTrace
+   *   The raw stack trace as a string.
+   * @return
+   *   A normalized stack trace string.
+   */
   private def normalizeStackTrace(stackTrace: String): String =
     stackTrace
       .split("\n")
-      .map { line =>
-        val trimmedLine = line.trim
-          .replaceAll("""\([^)]*\)""", "")
-          .replaceAll("""^\s*Exception in thread \".*\" """, "")
-        val withAtPrefix = if (!trimmedLine.startsWith("at ")) s"at $trimmedLine" else trimmedLine
-        withAtPrefix.replaceAll("""\s+""", " ")
-      }
-      .distinct
-      .filterNot(_.isEmpty)
-      .mkString("\n")
+      .map(normalizeLine)
+      .flatMap(filterEmptyLines) // Filter out empty lines
+      .distinct                  // Remove duplicates
+      .mkString("\n")            // Join lines back together
+
+  /**
+   * Normalize a single line of the stack trace.
+   *   - Removes file names and line numbers.
+   *   - Strips thread information.
+   *   - Adds the "at" prefix if missing.
+   */
+  private def normalizeLine(line: String): String = {
+    val cleanedLine = removeFileInfoAndThreadNames(line.trim)
+    addAtPrefixIfMissing(cleanedLine)
+  }
+
+  /**
+   * Removes file information (e.g., file names and line numbers) and thread
+   * names from a stack trace line.
+   */
+  private def removeFileInfoAndThreadNames(line: String): String =
+    line
+      .replaceAll("""\([^)]*\)""", "")                       // Remove file names and line numbers
+      .replaceAll("""^\s*Exception in thread \".*\" """, "") // Remove thread names
+
+  /**
+   * Adds the "at " prefix to the line if it's not already present.
+   */
+  private def addAtPrefixIfMissing(line: String): String =
+    if (!line.startsWith("at ")) s"at $line" else line
+
+  /**
+   * Filter out empty lines by returning an Option.
+   */
+  private def filterEmptyLines(line: String): Option[String] =
+    if (line.isEmpty) None else Some(line)
 
   // Helper method to filter out the cause and normalize the remaining stack trace
   private def normalizeStackTraceWithCauseFilter(trace: String): String = {
