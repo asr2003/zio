@@ -225,11 +225,11 @@ object FiberFailureSpec extends ZIOBaseSpec {
     stackTrace
       .split("\n")
       .map { line =>
-        line.trim
+        value trimmedLine = line.trim
           .replaceAll("""\([^)]*\)""", "")
           .replaceAll("""^\s*Exception in thread \".*\" """, "")
-          .replaceAll("""^(?!at\s)(.+)""", "at $1")
-          .replaceAll("""\s+""", " ")
+        val withAtPrefix = if (!trimmedLine.startsWith("at ")) s"at $trimmedLine" else trimmedLine
+        withAtPrefix.replaceAll("""\s+""", " ")
       }
       .distinct
       .filterNot(_.isEmpty)
