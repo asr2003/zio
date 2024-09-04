@@ -36,33 +36,41 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
 
     // Capture and log the raw Java stack trace
     val rawJavaStackTrace = super.getStackTrace()
+    println(s"Raw Java Stack Trace:\n${rawJavaStackTrace.mkString("\n")}")
 
-    ZIO.log(s"Raw Java Stack Trace:\n${rawJavaStackTrace.mkString("\n")}") *>
-      ZIO.succeed {
-        // Apply the filtering logic to remove internal ZIO methods
-        val javaStackTrace =
-          StackTrace.fromJava(FiberId.None, rawJavaStackTrace).toJava.toArray.filterNot(isInternalZioMethod)
+    // Apply the filtering logic to remove internal ZIO methods
+    val javaStackTrace =
+      StackTrace.fromJava(FiberId.None, rawJavaStackTrace).toJava.toArray.filterNot(isInternalZioMethod)
+    println(s"Filtered Java Stack Trace:\n${javaStackTrace.mkString("\n")}")
 
-        ZIO.log(s"Filtered Java Stack Trace:\n${javaStackTrace.mkString("\n")}") *>
-          ZIO.succeed {
-            // Capture and log the ZIO stack trace
-            val zioStackTrace = cause.unified.headOption
-              .fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace)
-              .toArray
+    // Capture and log the ZIO stack trace
+    val zioStackTrace = cause.unified.headOption
+      .fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace)
+      .toArray
+    println(s"ZIO Stack Trace:\n${zioStackTrace.mkString("\n")}")
 
-            ZIO.log(s"ZIO Stack Trace:\n${zioStackTrace.mkString("\n")}") *>
-              ZIO.succeed {
-                // Combine the ZIO and Java stack traces
-                val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + javaStackTrace.length)
-                arraycopy(zioStackTrace, 0, combinedStackTrace, 0, zioStackTrace.length)
-                arraycopy(javaStackTrace, 0, combinedStackTrace, zioStackTrace.length, javaStackTrace.length)
+    // Combine the ZIO and Java stack traces
+    val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + javaStackTrace.length)
+    arraycopy(zioStackTrace, 0, combinedStackTrace, 0, zioStackTrace.length)
+    arraycopy(javaStackTrace, 0, combinedStackTrace, zioStackTrace.length, javaStackTrace.length)
 
-                // Log the final combined stack trace
-                ZIO.log(s"Combined Stack Trace (ZIO + Filtered Java):\n${combinedStackTrace.mkString("\n")}") *>
-                  ZIO.succeed(combinedStackTrace)
-              }
-          }
-      }
+    // Log the final combined stack trace
+    println(s"Combined Stack Trace (ZIO + Filtered Java):\n${combinedStackTrace.mkString("\n")}")
+
+    combinedStackTrace
+  }
+
+  override def toString: String = {
+    // Log the unified cause message and trace
+    println(s"Unified Cause Message:\n${cause.unified.headOption.map(_.message).getOrElse("<unknown>")}")
+
+    // Fetch the stack trace using the filtered method
+    val stackTraceString = getStackTrace().mkString("\n\tat ", "\n\tat ", "")
+
+    // Log the stack trace that will be printed
+    println(s"Stack Trace in toString Method:\n$stackTraceString")
+
+    s"${cause.prettyPrint}\n$stackTraceString"
   }
 
   private def isInternalZioMethod(element: StackTraceElement): Boolean =
@@ -81,17 +89,17 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
       cause.unified.iterator.drop(1).foreach(unified => addSuppressed(unified.toThrowable))
     }
 
-  override def toString: String =
-    // Log the unified cause message and trace
-    ZIO.log(s"Unified Cause Message:\n${cause.unified.headOption.map(_.message).getOrElse("<unknown>")}") *>
-      ZIO.succeed {
-        // Fetch the stack trace using the filtered method
-        val stackTraceString = getStackTrace().mkString("\n\tat ", "\n\tat ", "")
+  // override def toString: String =
+  //   // Log the unified cause message and trace
+  //   ZIO.log(s"Unified Cause Message:\n${cause.unified.headOption.map(_.message).getOrElse("<unknown>")}") *>
+  //     ZIO.succeed {
+  //       // Fetch the stack trace using the filtered method
+  //       val stackTraceString = getStackTrace().mkString("\n\tat ", "\n\tat ", "")
 
-        // Log the stack trace that will be printed
-        ZIO.log(s"Stack Trace in toString Method:\n$stackTraceString") *>
-          ZIO.succeed(s"${cause.prettyPrint}\n$stackTraceString")
-      }
+  //       // Log the stack trace that will be printed
+  //       ZIO.log(s"Stack Trace in toString Method:\n$stackTraceString") *>
+  //         ZIO.succeed(s"${cause.prettyPrint}\n$stackTraceString")
+  //     }
 
   override def printStackTrace(s: PrintStream): Unit =
     s.println(this.toString)
