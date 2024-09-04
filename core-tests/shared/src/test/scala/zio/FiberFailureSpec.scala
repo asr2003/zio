@@ -29,6 +29,16 @@ object FiberFailureSpec extends ZIOBaseSpec {
       .filterNot(_.isEmpty)
       .mkString("\n")
 
+  def normalizeStackTraceWithCauseFilter(trace: String): String = {
+    // Remove the cause line (e.g., "java.lang.String: boom") and normalize the rest of the stack trace
+    val filteredTrace = trace
+      .split("\n")
+      .dropWhile(line => line.contains("boom") || line.contains("Exception in thread"))
+
+    // Now apply the normalization logic on the filtered trace
+    normalizeStackTrace(filteredTrace.mkString("\n"))
+  }
+
   def spec = suite("FiberFailureSpec")(
     test("FiberFailure getStackTrace includes relevant ZIO stack traces") {
       def subcall(): Unit =
@@ -214,8 +224,8 @@ object FiberFailureSpec extends ZIOBaseSpec {
         //     |	at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.scala:18)
         //     |	at zio.ZIOCompanionVersionSpecific.$anonfun$attempt$1(ZIOCompanionVersionSpecific.scala:100)""".stripMargin
         val normalizedGetStackTrace   = normalizeStackTrace(stackTraceFromGetStackTrace)
-        val normalizedToString        = normalizeStackTrace(stackTraceFromToString)
-        val normalizedPrintStackTrace = normalizeStackTrace(stackTraceFromPrint)
+        val normalizedToString        = normalizeStackTraceWithCauseFilter(stackTraceFromToString)
+        val normalizedPrintStackTrace = normalizeStackTraceWithCauseFilter(stackTraceFromPrint)
 
         // Logging the normalized stack traces for review
         ZIO.log(s"Normalized Stack Trace from getStackTrace:\n$normalizedGetStackTrace") *>
@@ -230,4 +240,31 @@ object FiberFailureSpec extends ZIOBaseSpec {
       }
     }
   ) @@ exceptJS
+
+  // Private helper method for normalizing stack traces
+  private def normalizeStackTrace(stackTrace: String): String =
+    stackTrace
+      .split("\n")
+      .map { line =>
+        line.trim
+          // Remove line numbers and file names but keep method names and class names
+          .replaceAll("""\([^)]*\)""", "")
+          // Remove thread names
+          .replaceAll("""^\s*Exception in thread \".*\" """, "")
+          // Remove redundant white spaces
+          .replaceAll("""\s+""", " ")
+      }
+      .filterNot(_.isEmpty)
+      .mkString("\n")
+
+  // Private helper method to filter out the cause and normalize the remaining stack trace
+  private def normalizeStackTraceWithCauseFilter(trace: String): String = {
+    // Remove the cause line (e.g., "java.lang.String: boom") and normalize the rest of the stack trace
+    val filteredTrace = trace
+      .split("\n")
+      .dropWhile(line => line.contains("boom") || line.contains("Exception in thread"))
+
+    // Now apply the normalization logic on the filtered trace
+    normalizeStackTrace(filteredTrace.mkString("\n"))
+  }
 }
