@@ -228,6 +228,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
           // Remove redundant white spaces
           .replaceAll("""\s+""", " ")
       }
+      .distinct
       .filterNot(_.isEmpty)
       .mkString("\n")
 
