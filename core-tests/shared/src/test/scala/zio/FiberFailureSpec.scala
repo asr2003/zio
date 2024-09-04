@@ -216,12 +216,17 @@ object FiberFailureSpec extends ZIOBaseSpec {
         val normalizedGetStackTrace   = normalizeStackTrace(stackTraceFromGetStackTrace)
         val normalizedToString        = normalizeStackTrace(stackTraceFromToString)
         val normalizedPrintStackTrace = normalizeStackTrace(stackTraceFromPrint)
-        ZIO.succeed {
-          assertTrue(
-            normalizedGetStackTrace == normalizedToString &&
-              normalizedToString == normalizedPrintStackTrace
-          )
-        }
+
+        // Logging the normalized stack traces for review
+        ZIO.log(s"Normalized Stack Trace from getStackTrace:\n$normalizedGetStackTrace") *>
+          ZIO.log(s"Normalized toString Output:\n$normalizedToString") *>
+          ZIO.log(s"Normalized Stack Trace from printStackTrace:\n$normalizedPrintStackTrace") *>
+          ZIO.succeed {
+            assertTrue(
+              normalizedGetStackTrace == normalizedToString &&
+                normalizedToString == normalizedPrintStackTrace
+            )
+          }
       }
     }
   ) @@ exceptJS
