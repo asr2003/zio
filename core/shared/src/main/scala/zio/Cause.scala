@@ -514,7 +514,7 @@ sealed abstract class Cause[+E] extends Product with Serializable { self =>
     def appendCause(cause: Cause[E]): Unit =
       cause.unified.zipWithIndex.foreach {
         case (unified, 0) =>
-          appendUnified(0, "Exception in thread \"" + unified.fiberId.threadName + "\" ", unified)
+          appendUnified(0, s"${unified.className}: ${unified.message}", unified)
         case (unified, n) =>
           appendUnified(n, s"Suppressed: ", unified)
       }
