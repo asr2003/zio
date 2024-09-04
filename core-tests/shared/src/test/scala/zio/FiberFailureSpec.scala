@@ -233,43 +233,19 @@ object FiberFailureSpec extends ZIOBaseSpec {
    */
   private def normalizeStackTrace(stackTrace: String): String =
     stackTrace
-      .split("\n")
-      .map(normalizeLine)
-      .flatMap(filterEmptyLines) // Filter out empty lines
-      .distinct                  // Remove duplicates
-      .mkString("\n")            // Join lines back together
+      .split("\n") // Split the stack trace into individual lines
+      .map { line =>
+        val trimmedLine = line.trim
+          .replaceAll("""\([^)]*\)""", "")                       // Remove file names and line numbers
+          .replaceAll("""^\s*Exception in thread \".*\" """, "") // Remove thread info
 
-  /**
-   * Normalize a single line of the stack trace.
-   *   - Removes file names and line numbers.
-   *   - Strips thread information.
-   *   - Adds the "at" prefix if missing.
-   */
-  private def normalizeLine(line: String): String = {
-    val cleanedLine = removeFileInfoAndThreadNames(line.trim)
-    addAtPrefixIfMissing(cleanedLine)
-  }
-
-  /**
-   * Removes file information (e.g., file names and line numbers) and thread
-   * names from a stack trace line.
-   */
-  private def removeFileInfoAndThreadNames(line: String): String =
-    line
-      .replaceAll("""\([^)]*\)""", "")                       // Remove file names and line numbers
-      .replaceAll("""^\s*Exception in thread \".*\" """, "") // Remove thread names
-
-  /**
-   * Adds the "at " prefix to the line if it's not already present.
-   */
-  private def addAtPrefixIfMissing(line: String): String =
-    if (!line.startsWith("at ")) s"at $line" else line
-
-  /**
-   * Filter out empty lines by returning an Option.
-   */
-  private def filterEmptyLines(line: String): Option[String] =
-    if (line.isEmpty) None else Some(line)
+        // Only add "at " prefix if the line is not empty and doesn't already have it
+        if (trimmedLine.nonEmpty && !trimmedLine.startsWith("at ")) s"at $trimmedLine"
+        else trimmedLine
+      }
+      .filterNot(_.trim.isEmpty) // Filter out empty or incomplete lines
+      .distinct                  // Remove duplicate lines to avoid redundancy
+      .mkString("\n")            // Join the cleaned lines back into a single string
 
   // Helper method to filter out the cause and normalize the remaining stack trace
   private def normalizeStackTraceWithCauseFilter(trace: String): String = {
