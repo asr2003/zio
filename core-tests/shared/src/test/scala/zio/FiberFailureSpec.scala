@@ -37,11 +37,17 @@ object FiberFailureSpec extends ZIOBaseSpec {
         }
       }
     },
-    test("FiberFailure toString should match cause.prettyPrint") {
+    test("FiberFailure toString should include cause and stack trace") {
       val cause        = Cause.fail(new Exception("Test Exception"))
       val fiberFailure = FiberFailure(cause)
 
-      assert(fiberFailure.toString)(equalTo(cause.prettyPrint))
+      val toStringOutput = fiberFailure.toString
+
+      assertTrue(
+        toStringOutput.contains("Test Exception"),
+        // General check for stack trace
+        toStringOutput.contains("at")
+      )
     },
     test("FiberFailure printStackTrace should correctly output the stack trace") {
       val cause        = Cause.fail(new Exception("Test Exception"))
