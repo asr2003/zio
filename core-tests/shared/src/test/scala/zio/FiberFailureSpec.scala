@@ -1,7 +1,6 @@
 package zio
 
 import zio.test._
-import zio.test.Assertion._
 import zio.test.TestAspect._
 import java.io.{ByteArrayOutputStream, PrintStream}
 
@@ -184,7 +183,7 @@ object FiberFailureSpec extends ZIOBaseSpec {
         .asInstanceOf[ZIO[Any, Nothing, (String, String, String)]]
 
       result.flatMap { case (stackTraceFromGetStackTrace, stackTraceFromToString, stackTraceFromPrint) =>
-        // Expected stack trace format (this is an example; will adjust it according to output format)
+        // Expected stack trace format (before normalisation)
         // val expectedStackTrace =
         //   """Exception in thread "zio-fiber" java.lang.String: boom
         //     |	at zio.FiberFailureSpec.spec.subcall(FiberFailureSpec.scala:152)
@@ -221,33 +220,27 @@ object FiberFailureSpec extends ZIOBaseSpec {
     }
   ) @@ exceptJS
 
-  // Private helper method for normalizing stack traces
+  // Helper method for normalizing stack traces
   private def normalizeStackTrace(stackTrace: String): String =
     stackTrace
       .split("\n")
       .map { line =>
         line.trim
-          // Remove line numbers and file names but keep method names and class names
           .replaceAll("""\([^)]*\)""", "")
-          // Remove thread names
           .replaceAll("""^\s*Exception in thread \".*\" """, "")
-          // Add "at " prefix for consistency with expected output
           .replaceAll("""^(?!at\s)(.+)""", "at $1")
-          // Remove redundant white spaces
           .replaceAll("""\s+""", " ")
       }
       .distinct
       .filterNot(_.isEmpty)
       .mkString("\n")
 
-  // Private helper method to filter out the cause and normalize the remaining stack trace
+  // Helper method to filter out the cause and normalize the remaining stack trace
   private def normalizeStackTraceWithCauseFilter(trace: String): String = {
-    // Remove the cause line (e.g., "java.lang.String: boom") and normalize the rest of the stack trace
     val filteredTrace = trace
       .split("\n")
       .dropWhile(line => line.contains("boom") || line.contains("Exception in thread"))
 
-    // Now apply the normalization logic on the filtered trace
     normalizeStackTrace(filteredTrace.mkString("\n"))
   }
 }
