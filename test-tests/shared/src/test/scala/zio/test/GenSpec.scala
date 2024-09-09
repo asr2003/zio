@@ -799,5 +799,5 @@ object GenSpec extends ZIOBaseSpec {
         }
       }
     )
-  ),
+  )
 }
