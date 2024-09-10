@@ -123,15 +123,13 @@ final case class Gen[-R, +A](sample: ZStream[R, Nothing, Sample[R, A]]) { self =
     Gen
       .fromZIO(
         sample.runCollect.fork.flatMap { fiber =>
+          // Collect all samples and generate fresh random values in each iteration
           fiber.join.map { samples =>
-            // Extract values from Sample before passing to Gen.fromIterable
-            val values = samples.map(_.value)
-            // Return a Gen, so the result needs to be flattened
-            Gen.fromIterable(values).forked
-          }
+            Gen.fromIterable(samples.map(_.value)) // Create a new Gen with collected values
+          }.fork.flatMap(_.join)                   // Fork and join to ensure isolated random state
         }
       )
-      .flatten // Ensure the Gen[R, A] is flattened properly
+      .flatten
 
   def map[B](f: A => B)(implicit trace: Trace): Gen[R, B] =
     Gen(sample.map(_.map(f)))
