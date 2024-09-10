@@ -123,7 +123,9 @@ final case class Gen[-R, +A](sample: ZStream[R, Nothing, Sample[R, A]]) { self =
     Gen.fromZIO(
       sample.runCollect.fork.flatMap { fiber =>
         fiber.join.map { samples =>
-          Gen.fromIterable(samples) // Collect all samples from the generator and use them in a new Gen
+          // Extract values from Sample before passing to Gen.fromIterable
+          val values = samples.map(_.value)
+          Gen.fromIterable(values) // Create Gen from the extracted values
         }
       }
     )
