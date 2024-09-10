@@ -781,7 +781,7 @@ object GenSpec extends ZIOBaseSpec {
       test("fromIterable before uuid") {
         check(
           for {
-            _  <- Gen.fromIterable(List(1, 2, 3, 4))
+            _  <- Gen.fromIterable(List(1, 2, 3, 4)).forked
             id <- Gen.uuid.forked
           } yield id
         ) { id =>
@@ -791,11 +791,18 @@ object GenSpec extends ZIOBaseSpec {
       test("uuid before fromIterable") {
         check(
           for {
-            id <- Gen.uuid.forked
-            _  <- Gen.fromIterable(List(1, 2, 3, 4))
+            uuidFiber <-
+              Gen.fromZIO(Gen.uuid.sample.runHead.someOrFailException.fork) // Fork UUID generation and handle None
+            id <- Gen.fromZIO(uuidFiber.join.map(_.value).orDie) // Join UUID fiber and extract value, handling failure
+            _ <- Gen.fromIterable(List(1, 2, 3, 4))
           } yield id
         ) { id =>
           ZIO.logInfo(s"uuid before fromIterable: $id") *> assertCompletes
+        }
+      },
+      test("foo") {
+        Gen.fromIterable(List(1, 2, 3, 4)).forked.runCollect.map { list =>
+          assertTrue(list == List(1, 2, 3, 4)) // list == List(1) passes but it's wrong
         }
       }
     )
