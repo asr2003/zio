@@ -127,7 +127,7 @@ final case class Gen[-R, +A](sample: ZStream[R, Nothing, Sample[R, A]]) { self =
             // Extract values from Sample before passing to Gen.fromIterable
             val values = samples.map(_.value)
             // Return a Gen, so the result needs to be flattened
-            Gen.fromIterable(values)
+            Gen.fromIterable(values).fork.flatMap(_.join)
           }
         }
       )
