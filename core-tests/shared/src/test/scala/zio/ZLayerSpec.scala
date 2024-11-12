@@ -408,7 +408,16 @@ object ZLayerSpec extends ZIOBaseSpec {
           (b, c) <- (fedB ++ fedC).build.useNow.map(v => (v.get[B], v.get[C]))
         } yield {
           assert(b.value)(equalTo(c.value))
-        }
+        },
+      },
+      testM("optional Tag[ROut2] parameter does not generate tag by default") {
+        // We attempt to combine layers without explicitly providing Tag[ROut2]
+        val layer1        = ZLayer.succeed("Test")
+        val layer2        = ZLayer.succeed(1)
+        val combinedLayer = layer1 ++ layer2
+
+        // We expect the combined layer to build successfully without requiring an explicit Tag parameter
+        combinedLayer.build.useNow.as(assertCompletes)
       }
     )
 }
