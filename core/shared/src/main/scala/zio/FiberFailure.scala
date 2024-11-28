@@ -17,6 +17,8 @@
 package zio
 
 import zio.stacktracer.TracingImplicits.disableAutoTrace
+import java.io.{PrintStream, PrintWriter}
+import java.lang.System.arraycopy
 
 /**
  * Represents a failure in a fiber. This could be caused by some non-
@@ -26,11 +28,26 @@ import zio.stacktracer.TracingImplicits.disableAutoTrace
  * This class is used to wrap ZIO failures into something that can be thrown, to
  * better integrate with Scala exception handling.
  */
-final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, false) {
+final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, true, true) {
   override def getMessage: String = cause.unified.headOption.fold("<unknown>")(_.message)
 
-  override def getStackTrace(): Array[StackTraceElement] =
-    cause.unified.headOption.fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace).toArray
+  override def getStackTrace(): Array[StackTraceElement] = {
+    implicit val trace: Trace = Trace.empty
+    val rawJavaStackTrace     = super.getStackTrace()
+
+    val javaStackTrace =
+      StackTrace.fromJava(FiberId.None, rawJavaStackTrace).toJava.toArray
+
+    val zioStackTrace = cause.unified.headOption
+      .fold[Chunk[StackTraceElement]](Chunk.empty)(_.trace)
+      .toArray
+
+    val combinedStackTrace = new Array[StackTraceElement](zioStackTrace.length + javaStackTrace.length)
+    arraycopy(zioStackTrace, 0, combinedStackTrace, 0, zioStackTrace.length)
+    arraycopy(javaStackTrace, 0, combinedStackTrace, zioStackTrace.length, javaStackTrace.length)
+
+    combinedStackTrace
+  }
 
   override def getCause(): Throwable =
     cause.find { case Cause.Die(throwable, _) => throwable }
@@ -42,6 +59,17 @@ final case class FiberFailure(cause: Cause[Any]) extends Throwable(null, null, t
       cause.unified.iterator.drop(1).foreach(unified => addSuppressed(unified.toThrowable))
     }
 
-  override def toString =
-    cause.prettyPrint
+  override def toString: String = {
+    val stackTraceString = getStackTrace().mkString("\n\tat ", "\n\tat ", "")
+    s"${cause.prettyPrint}\n$stackTraceString"
+  }
+
+  override def printStackTrace(s: PrintStream): Unit =
+    s.println(this.toString)
+
+  override def printStackTrace(s: PrintWriter): Unit =
+    s.println(this.toString)
+
+  override def printStackTrace(): Unit =
+    java.lang.System.err.println(this.toString)
 }
