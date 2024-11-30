@@ -2771,8 +2771,8 @@ object ZStreamSpec extends ZIOBaseSpec {
                                         .mapZIOPar(5)(_ => ZIO.succeed(()))
                                         .runCollect
             } yield {
-              assert(highParallelismResult.size <= 1024) &&
-              assert(lowParallelismResult.size <= 10)
+              assert(highParallelismResult.size)(Assertion.isLessThanEqualTo(1024)) &&
+              assert(lowParallelismResult.size)(Assertion.isLessThanEqualTo(10))
             }
           },
           test("accumulates parallel errors") {
