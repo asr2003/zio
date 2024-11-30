@@ -2784,7 +2784,21 @@ object ZStreamSpec extends ZIOBaseSpec {
                   containsCause[DbError](Cause.fail(QtyTooLarge))
               )
             )
-          } @@ flaky
+          } @@ flaky,
+          test("dynamic buffer size adjusts correctly based on parallelism") {
+            for {
+              _ <- ZStream
+                     .fromIterable(1 to 10000)
+                     .mapZIOPar(2000)(_ => ZIO.succeed(()))
+                     .runCollect
+                     .map(chunk => assert(chunk.size)(isLessThanOrEqualTo(1024)))
+              _ <- ZStream
+                     .fromIterable(1 to 100)
+                     .mapZIOPar(5)(_ => ZIO.succeed(()))
+                     .runCollect
+                     .map(chunk => assert(chunk.size)(isLessThanOrEqualTo(10)))
+            } yield ()
+          }
         ),
         suite("mapZIOParUnordered")(
           test("foreachParN equivalence") {
