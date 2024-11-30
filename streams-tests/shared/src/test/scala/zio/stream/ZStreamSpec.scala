@@ -2759,6 +2759,22 @@ object ZStreamSpec extends ZIOBaseSpec {
               _     <- f.join
             } yield assertTrue(count == 0)
           } @@ TestAspect.jvmOnly @@ nonFlaky,
+          test("dynamic buffer size adjusts correctly based on parallelism") {
+            for {
+              highParallelismResult <- ZStream
+                                         .fromIterable(1 to 10000)
+                                         .mapZIOPar(2000)(_ => ZIO.succeed(()))
+                                         .runCollect
+
+              lowParallelismResult <- ZStream
+                                        .fromIterable(1 to 100)
+                                        .mapZIOPar(5)(_ => ZIO.succeed(()))
+                                        .runCollect
+            } yield {
+              assert(highParallelismResult.size <= 1024) &&
+              assert(lowParallelismResult.size <= 10)
+            }
+          },
           test("accumulates parallel errors") {
             sealed abstract class DbError extends Product with Serializable
             case object Missing           extends DbError
@@ -2784,21 +2800,7 @@ object ZStreamSpec extends ZIOBaseSpec {
                   containsCause[DbError](Cause.fail(QtyTooLarge))
               )
             )
-          } @@ flaky,
-          test("dynamic buffer size adjusts correctly based on parallelism") {
-            for {
-              _ <- ZStream
-                     .fromIterable(1 to 10000)
-                     .mapZIOPar(2000)(_ => ZIO.succeed(()))
-                     .runCollect
-                     .map(chunk => assert(chunk.size)(isLessThanOrEqualTo(1024)))
-              _ <- ZStream
-                     .fromIterable(1 to 100)
-                     .mapZIOPar(5)(_ => ZIO.succeed(()))
-                     .runCollect
-                     .map(chunk => assert(chunk.size)(isLessThanOrEqualTo(10)))
-            } yield ()
-          }
+          } @@ flaky
         ),
         suite("mapZIOParUnordered")(
           test("foreachParN equivalence") {
