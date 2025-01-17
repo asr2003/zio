@@ -344,7 +344,7 @@ def broadcastDynamic(
   self
     .broadcastedQueuesDynamic(maximumLag)
     .map { scopedQueue =>
-      ZStream.scoped(scopedQueue).flatMap(queue => ZStream.fromQueue(queue).flattenTake)
+      ZStream.scoped(scopedQueue).flatMap(queue => ZStream.fromQueue(queue).flattenTake).ensuring(ZIO.debug("Closing Stream Scope"))
     }
 
 
