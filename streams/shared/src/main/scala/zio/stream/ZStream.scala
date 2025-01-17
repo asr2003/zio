@@ -338,12 +338,15 @@ final class ZStream[-R, +E, +A] private (val channel: ZChannel[R, Any, Any, Any,
    * same elements as this stream. The driver stream will only ever advance the
    * `maximumLag` chunks before the slowest downstream stream.
    */
-  def broadcastDynamic(
-    maximumLag: => Int
-  )(implicit trace: Trace): ZIO[R with Scope, Nothing, ZStream[Any, E, A]] =
-    self
-      .broadcastedQueuesDynamic(maximumLag)
-      .map(ZStream.scoped(_).flatMap(ZStream.fromQueue(_)).flattenTake)
+def broadcastDynamic(
+  maximumLag: => Int
+)(implicit trace: Trace): ZIO[R with Scope, Nothing, ZStream[Any, E, A]] =
+  self
+    .broadcastedQueuesDynamic(maximumLag)
+    .map { scopedQueue =>
+      ZStream.scoped(scopedQueue).flatMap(queue => ZStream.fromQueue(queue).flattenTake).ensuring(ZIO.debug("Closing Stream Scope"))
+    }
+
 
   /**
    * Converts the stream to a scoped list of queues. Every value will be
@@ -369,10 +372,12 @@ final class ZStream[-R, +E, +A] private (val channel: ZChannel[R, Any, Any, Any,
    *
    * Queues can unsubscribe from upstream by shutting down.
    */
-  def broadcastedQueuesDynamic(
-    maximumLag: => Int
-  )(implicit trace: Trace): ZIO[R with Scope, Nothing, ZIO[Scope, Nothing, Dequeue[Take[E, A]]]] =
-    toHub(maximumLag).map(_.subscribe)
+def broadcastedQueuesDynamic(
+  maximumLag: => Int
+)(implicit trace: Trace): ZIO[R with Scope, Nothing, ZIO[Scope, Nothing, Dequeue[Take[E, A]]]] =
+  toHub(maximumLag).map { hub =>
+    ZIO.acquireRelease(hub.subscribe)(_.shutdown.ignore)
+  }
 
   /**
    * Allows a faster producer to progress independently of a slower consumer by
