@@ -560,7 +560,7 @@ object ZStreamSpec extends ZIOBaseSpec {
                 ref <- Ref.make(0)
                 stream <- ZStream
                   .fromIterable(0 to 10)
-                   .tap(i => ref.update(current => current + 1))
+                   .tap(_ => ref.update(_ + 1))
                   .broadcastDynamic(2)
                 fiber <- stream.runDrain.fork
                 _     <- fiber.join.timeout(2.seconds)
