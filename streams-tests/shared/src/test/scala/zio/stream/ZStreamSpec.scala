@@ -539,6 +539,35 @@ object ZStreamSpec extends ZIOBaseSpec {
             }
           }
         ),
+        suite("ZStream#broadcastDynamic should behave correctly")(
+            test("should not hang and should execute tap logs") {
+              for {
+                promise <- Promise.make[Nothing, Unit]
+                stream <- ZStream
+                  .fromIterable(0 to 10)
+                  .tap(i => ZIO.debug(s"stream $i"))
+                  .broadcastDynamic(2)
+                fiber <- stream
+                  .tap(x => promise.succeed(()) *> ZIO.debug(s"i $x"))
+                  .runDrain
+                  .fork
+                _      <- promise.await.timeout(2.seconds)
+                result <- fiber.join.exit
+              } yield assert(result)(succeeds(anything))
+            },
+            test("should properly release resources and not leak scope") {
+              for {
+                ref <- Ref.make(0)
+                stream <- ZStream
+                  .fromIterable(0 to 10)
+                  .tap(i => ref.update(_ + 1))
+                  .broadcastDynamic(2)
+                fiber <- stream.runDrain.fork
+                _     <- fiber.join.timeout(2.seconds)
+                count <- ref.get
+              } yield assert(count)(equalTo(11))
+            }
+          ),
         suite("buffer")(
           test("maintains elements and ordering")(check(tinyChunkOf(tinyChunkOf(Gen.int))) { chunk =>
             assertZIO(
