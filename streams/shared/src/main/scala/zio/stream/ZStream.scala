@@ -343,7 +343,13 @@ final class ZStream[-R, +E, +A] private (val channel: ZChannel[R, Any, Any, Any,
   )(implicit trace: Trace): ZIO[R with Scope, Nothing, ZStream[Any, E, A]] =
     self
       .broadcastedQueuesDynamic(maximumLag)
-      .map(ZStream.scoped(_).flatMap(ZStream.fromQueue(_)).flattenTake)
+    .map { scopedQueue =>
+      ZStream
+        .acquireReleaseWith(scopedQueue) { queue =>
+          queue.shutdown.ignore
+        }
+        .flatMap(queue => ZStream.fromQueue(queue).flattenTake)
+    }
 
   /**
    * Converts the stream to a scoped list of queues. Every value will be
@@ -372,7 +378,11 @@ final class ZStream[-R, +E, +A] private (val channel: ZChannel[R, Any, Any, Any,
   def broadcastedQueuesDynamic(
     maximumLag: => Int
   )(implicit trace: Trace): ZIO[R with Scope, Nothing, ZIO[Scope, Nothing, Dequeue[Take[E, A]]]] =
-    toHub(maximumLag).map(_.subscribe)
+    toHub(maximumLag).map( hub =>
+    ZIO.acquireReleaseWith(hub.subscribe) { queue =>
+      queue.shutdown.ignore
+    }
+  }
 
   /**
    * Allows a faster producer to progress independently of a slower consumer by
