@@ -344,12 +344,9 @@ def broadcastDynamic(
   self
     .broadcastedQueuesDynamic(maximumLag)
     .map { scopedQueue =>
-      ZStream
-        .acquireReleaseWith(scopedQueue) { queue =>
-          queue.shutdown.ignore
-        }
-        .flatMap(queue => ZStream.fromQueue(queue).flattenTake)
+      ZStream.scoped(scopedQueue).flatMap(queue => ZStream.fromQueue(queue).flattenTake)
     }
+
 
   /**
    * Converts the stream to a scoped list of queues. Every value will be
@@ -379,9 +376,7 @@ def broadcastedQueuesDynamic(
   maximumLag: => Int
 )(implicit trace: Trace): ZIO[R with Scope, Nothing, ZIO[Scope, Nothing, Dequeue[Take[E, A]]]] =
   toHub(maximumLag).map { hub =>
-    ZIO.acquireReleaseWith(hub.subscribe) { queue =>
-      queue.shutdown.ignore
-    }
+    ZIO.acquireRelease(hub.subscribe)(_.shutdown.ignore)
   }
 
   /**
