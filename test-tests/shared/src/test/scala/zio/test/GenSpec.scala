@@ -776,6 +776,35 @@ object GenSpec extends ZIOBaseSpec {
       check(Gen.setOfN(2)(Gen.fromIterable(List(1, 2, 3)))) { set =>
         assertTrue(set.size == 2)
       }
-    }
+    },
+    suite("for-comprehension generators")(
+      test("fromIterable before uuid") {
+        check(
+          for {
+            _  <- Gen.fromIterable(List(1, 2, 3, 4)).forked
+            id <- Gen.uuid.forked
+          } yield id
+        ) { id =>
+          ZIO.logInfo(s"fromIterable before uuid: $id") *> assertCompletes
+        }
+      },
+      test("uuid before fromIterable") {
+        check(
+          for {
+            uuidFiber <-
+              Gen.fromZIO(Gen.uuid.sample.runHead.someOrFailException.fork) // Fork UUID generation and handle None
+            id <- Gen.fromZIO(uuidFiber.join.map(_.value).orDie) // Join UUID fiber and extract value, handling failure
+            _ <- Gen.fromIterable(List(1, 2, 3, 4))
+          } yield id
+        ) { id =>
+          ZIO.logInfo(s"uuid before fromIterable: $id") *> assertCompletes
+        }
+      },
+      test("foo") {
+        Gen.fromIterable(List(1, 2, 3, 4)).forked.runCollect.map { list =>
+          assertTrue(list == List(1, 2, 3, 4)) // list == List(1) passes but it's wrong
+        }
+      }
+    )
   )
 }
